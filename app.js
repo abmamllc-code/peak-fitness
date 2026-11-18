@@ -116,7 +116,7 @@ const U = {
   tab: localStorage.getItem('peakfit.tab') || 'meals',
   mealsDate: today(), gymDate: today(), period: '30',
   open: new Set(), measType: null, lastExercise: null,
-  mealsMode: localStorage.getItem('peakfit.mealsMode') === 'shop' ? 'shop' : 'meals', sumOpen: false, tplEdit: null, hintIdx: 0,
+  mealsMode: localStorage.getItem('peakfit.mealsMode') === 'shop' ? 'shop' : 'meals', shopFilter: 'all', sumOpen: false, tplEdit: null, hintIdx: 0,
 };
 
 /* ================= Meals model ================= */
@@ -322,7 +322,21 @@ const SHOP = {
   ],
   week: [['bananas', 'Bananas', '14–15'], ['grapes', 'Grapes', '~1.1kg'], ['yogurt', 'Greek yogurt, full-fat', '2 × 1kg'], ['eggs', 'Eggs', '15 tray'], ['potatoes', 'Potatoes', '2.5kg bag']],
 };
-const SHOP_WHERE = ['<b>Aldi / Lidl</b> are cheapest for rice, frozen veg and berries, yogurt, eggs, fruit and potatoes.', '<b>Local butchers on Wilmslow Road</b> (Rusholme) often do bulk deals on chicken thighs and mince. Ask for 5kg+ prices.', '<b>Costco Trafford Park</b> for 10kg rice and big meat packs, if you have a membership.'];
+const SHOP_STORES = [{ id: 'haris', name: 'Haris & Co' }, { id: 'morrisons', name: 'Morrisons' }, { id: 'veg', name: 'Veg market' }];
+const SHOP_AT = {
+  chicken: ['haris', 'morrisons'], mince: ['haris', 'morrisons'],
+  berries: ['morrisons'], broccoli: ['morrisons'],
+  rice: ['haris'], dates: ['haris', 'morrisons'],
+  honey: ['morrisons', 'haris'], oil: ['haris', 'morrisons'],
+  spray: ['morrisons'], seasoning: ['morrisons', 'haris'], butter: ['morrisons'],
+  bananas: ['veg', 'morrisons'], grapes: ['veg', 'morrisons'],
+  yogurt: ['morrisons'], eggs: ['morrisons', 'veg'], potatoes: ['veg', 'morrisons'],
+};
+const SHOP_WHERE = [
+  '<b>Haris & Co</b> for halal chicken and mince, and for bulk rice, dates and cupboard staples.',
+  '<b>Morrisons</b> for frozen berries and broccoli, Greek yogurt, 1-cal spray, honey, butter and eggs.',
+  '<b>Veg market</b> for bananas, grapes and potatoes — usually cheaper than the supermarket.',
+];
 const SHOP_PREP = ['Freeze meat as soon as you get home, portioned per day.', 'Defrost tomorrow’s portions in the fridge the night before.', 'Keep potatoes in a cool, dark cupboard away from onions.', 'Batch cook rice for 2–3 days at a time.'];
 const weekStart = d => addDays(d, -mod(parseISO(d).getDay() - 1, 7)); // Monday
 function shopSync() { const ws = weekStart(today()); if (S.shop.weekOf !== ws) { S.shop.week = {}; S.shop.weekOf = ws; save(); } }
@@ -339,14 +353,19 @@ function shopCount(list) {
   const ids = list === 'month' ? monthItems().map(i => i[0]) : list === 'week' ? SHOP.week.map(i => i[0]) : S.shop.extras.map(x => x.id);
   return { got: ids.filter(id => isGot(list, id)).length, n: ids.length };
 }
+function shopStores(id) { return (SHOP_AT[id] || []).map(k => SHOP_STORES.find(s => s.id === k)).filter(Boolean); }
 function shopRow(list, id, name, qty, del) {
+  const tags = shopStores(id);
+  const at = tags.length ? `<div class="shop-at">${tags.map(s => `<span>${esc(s.name)}</span>`).join('')}</div>` : '';
   return `<div class="srow${isGot(list, id) ? ' done' : ''}" data-list="${list}" data-sid="${esc(id)}">
     <button class="check" data-act="shop-tick" aria-label="Tick ${esc(name)}">${I.check}</button>
-    <div class="item-main" data-act="shop-tick"><div class="item-title">${esc(name)}</div></div>
+    <div class="item-main" data-act="shop-tick"><div class="item-title">${esc(name)}</div>${at}</div>
     ${qty ? `<div class="item-val">${esc(qty)}</div>` : ''}${del ? `<button class="del" data-act="shop-del" aria-label="Remove ${esc(name)}">${I.x}</button>` : ''}</div>`;
 }
 function renderShop() {
   shopSync();
+  const filt = U.shopFilter || 'all';
+  const shown = id => filt === 'all' || (SHOP_AT[id] || []).includes(filt);
   const m = shopCount('month'), w = shopCount('week'), x = shopCount('extras');
   const all = m.got + w.got + x.got, total = m.n + w.n + x.n;
   const card = (id, kicker, count, sub, body) => `<div class="card${isOpen(id)}" data-card="${id}">
@@ -355,23 +374,28 @@ function renderShop() {
       <div class="head-right">${I.chev}</div></div>
     <div class="expand"><div class="expand-in"><div class="expand-body">${body}</div></div></div></div>`;
   const cnt = c => `${c.got}<small>of ${c.n}</small>`;
-  const monthBody = SHOP.month.map(g => `<div class="shop-g"><div class="shop-gh">${g.g}${g.note ? `<span>${g.note}</span>` : ''}</div>
+  const monthVis = SHOP.month.map(g => ({ g, items: g.items.filter(([id]) => shown(id)) })).filter(g => g.items.length);
+  const weekVis = SHOP.week.filter(([id]) => shown(id));
+  const monthBody = monthVis.map(g => `<div class="shop-g"><div class="shop-gh">${g.g.g}${g.g.note ? `<span>${g.g.note}</span>` : ''}</div>
       ${g.items.map(([id, n, q]) => shopRow('month', id, n, q)).join('')}</div>`).join('') +
     `<div class="actions"><span class="faint" style="font-size:12.5px">Ticks stay until your next big shop</span><button class="pill pill-sm" data-act="shop-reset" data-list="month">New shop</button></div>`;
-  const weekBody = `<div class="shop-g">${SHOP.week.map(([id, n, q]) => shopRow('week', id, n, q)).join('')}</div>
+  const weekBody = `<div class="shop-g">${weekVis.map(([id, n, q]) => shopRow('week', id, n, q)).join('')}</div>
     <div class="actions"><span class="faint" style="font-size:12.5px">Clears itself every Monday</span><button class="pill pill-sm" data-act="shop-reset" data-list="week">Reset</button></div>`;
   const extraBody = `${S.shop.extras.length ? `<div class="shop-g">${S.shop.extras.map(e => shopRow('extras', e.id, e.name, '', true)).join('')}</div>` : ''}
     <form class="inline-add" data-form="shop-add" autocomplete="off" style="margin-top:${S.shop.extras.length ? 12 : 0}px"><input class="field" name="v" placeholder="Add an item, e.g. oats"><button class="pill pill-gold" type="submit">Add</button></form>`;
-  const tips = (id, kicker, sub, list) => `<div class="card card-sm${isOpen(id)}" data-card="${id}"><div class="card-head" data-act="toggle"><div class="grow"><div class="card-kicker">${kicker}</div><div class="item-sub">${sub}</div></div><div class="head-right">${I.chev}</div></div>
+  const tips = (id, kicker, sub, list) => `<div class="card card-sm${isOpen(id)}" data-card="${id}"><div class="card-head" data-act="toggle"><div class="grow"><div class="card-kicker">${kicker}</div>${sub ? `<div class="item-sub">${sub}</div>` : ''}</div><div class="head-right">${I.chev}</div></div>
     <div class="expand"><div class="expand-in"><div class="expand-body"><ul class="tips">${list.map(t => `<li>${t}</li>`).join('')}</ul></div></div></div></div>`;
+  const filtBar = `<div class="shop-filt" role="tablist" aria-label="Filter by store">${[{ id: 'all', name: 'All' }, ...SHOP_STORES].map(s =>
+    `<button class="chip${filt === s.id ? ' on' : ''}" data-act="shop-filter" data-store="${s.id}">${esc(s.name)}</button>`).join('')}</div>`;
   $('#view-meals').innerHTML = `${modeSeg()}
     <div class="panel shop-sum"><div class="grow"><div class="card-kicker">30 days · Lean bulk, phase 1</div>
       <div class="sum-cals"><span data-count="all-got" style="color:inherit;font-size:inherit">${all}</span> <span>of <span data-count="all-n" style="font-size:inherit">${total}</span> in the trolley</span></div></div>
       <div class="shop-bar"><i data-count="bar" style="transform:scaleX(${total ? all / total : 0})"></i></div></div>
-    ${card('shop-month', 'Big monthly shop', cnt(m), 'Meat, frozen and cupboard', monthBody)}
-    ${card('shop-week', 'Weekly fresh top-up', cnt(w), 'Every week ×4, buy fresh so nothing goes off', weekBody)}
-    ${card('shop-extras', 'Your extras', x.n ? cnt(x) : '<span class="faint">—</span>', x.n ? 'Things you’ve added' : 'Add anything else you need', extraBody)}
-    ${tips('shop-where', 'Where to shop', 'Manchester', SHOP_WHERE)}
+    ${filtBar}
+    ${monthVis.length ? card('shop-month', 'Big monthly shop', cnt(m), 'Meat, frozen and cupboard', monthBody) : ''}
+    ${weekVis.length ? card('shop-week', 'Weekly fresh top-up', cnt(w), 'Every week ×4, buy fresh so nothing goes off', weekBody) : ''}
+    ${filt === 'all' ? card('shop-extras', 'Your extras', x.n ? cnt(x) : '<span class="faint">—</span>', x.n ? 'Things you’ve added' : 'Add anything else you need', extraBody) : ''}
+    ${tips('shop-where', 'Where to shop', '', SHOP_WHERE)}
     ${tips('shop-prep', 'Prep tips', 'Freezing, defrosting, batch cooking', SHOP_PREP)}`;
 }
 function refreshShopCounts() {
@@ -673,6 +697,10 @@ views.addEventListener('click', e => {
       setTimeout(() => { renderMeals(); const v = $('#view-meals'); v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; }, 140); break;
     }
     case 'nudge': dismissHint(a.dataset.id); break;
+    case 'shop-filter': {
+      const store = a.dataset.store || 'all'; if (store === U.shopFilter) break;
+      U.shopFilter = store; renderMeals(); break;
+    }
     case 'shop-tick': {
       const row = a.closest('.srow'), list = row.dataset.list, id = row.dataset.sid, v = !isGot(list, id);
       setGot(list, id, v); save(); row.classList.toggle('done', v);
