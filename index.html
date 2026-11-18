@@ -10,8 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PEAK">
-<link rel="apple-touch-icon" href="assets/icon-180.png">
-<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-dumbbell-light-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-dumbbell-light-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* Set theme before first paint so there is no flash */
@@ -59,6 +59,13 @@
       <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
     </button>
   </nav>
+
+  <div class="restbar" id="restBar" role="timer" aria-label="Rest timer">
+    <span class="rest-fill" id="restFill"></span>
+    <div class="rest-main"><span class="rest-l">Rest</span><span class="rest-t" id="restTime">3:00</span><span class="rest-n" id="restName"></span></div>
+    <button class="chip" data-rest="add">+30s</button>
+    <button class="del" data-rest="skip" aria-label="Skip rest"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
 </div>
 
 <!-- Voice sheet -->
@@ -71,13 +78,15 @@
       <p class="voice-status" id="voiceStatus">Listening…</p>
     </div>
     <form class="voice-form" id="voiceForm" autocomplete="off">
-      <input class="field" id="voiceInput" placeholder="Say or type: bodyweight 82.5" enterkeyhint="go">
+      <input class="field" id="voiceInput" placeholder="Say or type: tick off meal 1" enterkeyhint="go">
       <button class="pill pill-gold" type="submit">Apply</button>
     </form>
     <p class="voice-note" id="voiceNote"></p>
     <div class="voice-hints">
-      <button class="chip" data-hint="tick off breakfast">tick off breakfast</button>
-      <button class="chip" data-hint="bench press 3 sets of 8 at 80 kilos">bench press 3 sets of 8 at 80 kilos</button>
+      <button class="chip" data-hint="tick off pre-gym">tick off pre-gym</button>
+      <button class="chip" data-hint="lat pulldown 2 sets of 8 at 60 kilos">lat pulldown 2 sets of 8 at 60 kilos</button>
+      <button class="chip" data-hint="tick off chicken thighs">tick off chicken thighs</button>
+      <button class="chip" data-hint="add to shopping oats">add to shopping oats</button>
       <button class="chip" data-hint="bodyweight 82.5">bodyweight 82.5</button>
       <button class="chip" data-hint="waist 34">waist 34</button>
     </div>

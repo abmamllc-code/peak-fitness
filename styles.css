@@ -177,6 +177,55 @@ textarea.field{height:auto;min-height:64px;padding:10px 14px;resize:none;line-he
 
 /* ---------- Meals ---------- */
 .summary{display:flex;align-items:center;gap:18px;padding:18px;margin-bottom:12px}
+.sumcard{margin-bottom:12px;overflow:hidden}
+.sumcard .summary{margin:0;cursor:pointer;-webkit-user-select:none;user-select:none}
+.sumcard .summary:active{background:var(--bg-hover)}
+.macros .chev{width:14px;height:14px;margin-left:auto}
+.sumcard.open .macros .chev{transform:rotate(180deg)}
+.macro-detail{padding:0 18px 16px;border-top:1px solid var(--line);padding-top:14px}
+.mrow{display:grid;grid-template-columns:62px 1fr auto;gap:10px;align-items:center;font-size:13px;padding:4px 0}
+.ml{color:var(--text-muted)}
+.mbar{height:6px;border-radius:999px;background:var(--bg-hover);overflow:hidden}
+.mbar i{display:block;height:100%;border-radius:999px;background:var(--gold);transform-origin:left;transition:transform 600ms var(--ease)}
+.mv{font-variant-numeric:tabular-nums;font-weight:500;min-width:84px;text-align:right}
+.mv span{color:var(--text-faint);font-weight:400}
+.mnote{font-size:12px;color:var(--text-faint);margin:8px 0 0;line-height:1.4}
+
+/* Hint chip: one gentle, dismissable nudge at a time */
+.nudge-slot{margin:0 0 12px}
+.nudge-slot:empty{display:none}
+.nudge{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 10px 10px 14px;border-radius:14px;background:var(--gold-soft);
+  border:1px solid color-mix(in srgb,var(--gold) 22%,transparent);font-size:13.5px;line-height:1.35;color:var(--text);animation:enter 260ms var(--ease) both;
+  transition:opacity 180ms var(--ease),transform 180ms var(--ease)}
+.nudge.out{opacity:0;transform:translateY(-4px)}
+.nudge:active{transform:scale(.985)}
+.nudge-dot{width:7px;height:7px;border-radius:999px;background:var(--gold);flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--gold) 16%,transparent);animation:breathe 2.4s ease-in-out infinite}
+@keyframes breathe{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--gold) 6%,transparent)}}
+.nudge-t{flex:1;min-width:0}
+.nudge-x{width:22px;height:22px;display:grid;place-items:center;color:var(--text-faint);flex:none}
+.nudge-x svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+/* Shopping */
+.shop-sum{display:flex;align-items:center;gap:16px;padding:16px 18px;margin-bottom:12px}
+.shop-sum .sum-cals{margin-top:4px}
+.shop-bar{width:72px;height:6px;border-radius:999px;background:var(--bg-hover);overflow:hidden;flex:none}
+.shop-bar i{display:block;height:100%;background:var(--gold);border-radius:999px;transform-origin:left;transition:transform 500ms var(--ease)}
+.shop-g{border-top:1px solid var(--line)}
+.shop-g+.shop-g{margin-top:6px}
+.shop-gh{font-size:12px;font-weight:500;color:var(--text-faint);letter-spacing:.02em;text-transform:uppercase;padding:12px 2px 4px}
+.shop-gh span{display:block;text-transform:none;letter-spacing:0;font-weight:400;font-size:12.5px;margin-top:2px}
+.srow{display:flex;align-items:center;gap:12px;min-height:48px;padding:4px 0;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:0}
+.srow .item-main{cursor:pointer}
+.srow .item-title{font-weight:400;font-size:14.5px}
+.srow .item-val{font-size:13px}
+.srow.done .item-title{color:var(--text-faint);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--text-faint) 60%,transparent)}
+.srow.done .item-val{color:var(--text-faint)}
+.srow .check{width:26px;height:26px}
+.card-sm .card-head{padding:14px 16px}
+.tips{margin:0;padding:0 0 0 18px;font-size:13.5px;color:var(--text-muted);line-height:1.5}
+.tips li+li{margin-top:6px}
+.tips b{color:var(--text);font-weight:500}
 .ring{position:relative;width:96px;height:96px;flex:none}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
 .ring circle{fill:none;stroke-width:7}
@@ -217,6 +266,54 @@ textarea.field{height:auto;min-height:64px;padding:10px 14px;resize:none;line-he
 .stat:first-child{border-left:0}
 .stat-v{font-size:20px;font-weight:400;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .stat-l{font-size:12px;color:var(--text-faint);margin-top:1px}
+.stat-of{font-size:13px;color:var(--text-faint)}
+.badge-n{width:auto!important;min-width:28px;padding:0 7px}
+/* Session card + cycle */
+.session .card-big{display:flex;align-items:baseline;gap:6px}
+.session .head-right{flex-direction:row;align-items:center;gap:10px}
+.session .timer{color:var(--gold);font-variant-numeric:tabular-nums}
+.session.running{border-color:color-mix(in srgb,var(--gold) 40%,transparent)}
+.cyc{display:flex;gap:6px;flex-wrap:wrap}
+.time-field{width:auto;min-width:112px;height:36px;text-align:center}
+.rest-day{display:flex;gap:14px;align-items:flex-start;padding:18px;margin-bottom:12px}
+.rest-day>svg{width:22px;height:22px;flex:none;fill:none;stroke:var(--gold);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+.rest-day b{display:block;font-weight:500;font-size:16px;margin-bottom:3px}
+.rest-day span{font-size:13.5px;color:var(--text-muted);line-height:1.45}
+/* Set done check */
+.set-check{width:28px;height:28px;border-radius:999px;border:1.5px solid var(--line-strong);display:grid;place-items:center;position:relative;font-size:12px;color:var(--text-faint);font-variant-numeric:tabular-nums;
+  transition:background 200ms var(--ease),border-color 200ms var(--ease),transform 200ms var(--ease-card)}
+.set-check svg{position:absolute;width:14px;height:14px;fill:none;stroke:var(--on-gold);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.set-check path{stroke-dasharray:20;stroke-dashoffset:20;transition:stroke-dashoffset 260ms var(--ease) 60ms}
+.set-check span{transition:opacity 150ms ease}
+.set-check.on{background:var(--gold);border-color:var(--gold)}
+.set-check.on path{stroke-dashoffset:0}
+.set-check.on span{opacity:0}
+.set-check:active{transform:scale(.88)}
+.set-check.pop{animation:pop 360ms var(--ease)}
+.set.is-done .field{color:var(--text-muted)}
+/* Template editor */
+.tpl-row{padding:12px 14px;border-top:1px solid var(--line)}
+.tpl-row:first-child{border-top:0}
+.tpl-row .row .field{height:38px}
+.tpl-nums{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px;margin-top:8px;padding-right:40px}
+.tpl-nums label span{display:block;font-size:11.5px;color:var(--text-faint);margin:0 0 4px 2px;font-weight:500}
+.tpl-nums .field{height:36px;text-align:center;padding:0 8px;font-variant-numeric:tabular-nums}
+/* Rest timer bar */
+.restbar{position:fixed;z-index:29;left:50%;bottom:calc(var(--sab) + 14px + 56px + 10px);width:min(calc(100% - 32px),488px);height:50px;border-radius:999px;
+  display:flex;align-items:center;gap:8px;padding:0 6px 0 18px;overflow:hidden;background:color-mix(in srgb,var(--bg-elev-2) 92%,transparent);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4);backdrop-filter:blur(20px) saturate(1.4);box-shadow:var(--panel-shadow),var(--shadow);
+  transform:translate(-50%,14px);opacity:0;pointer-events:none;transition:opacity 220ms var(--ease),transform 260ms var(--ease)}
+.restbar.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+body.resting .views{padding-bottom:calc(var(--tabbar-h) + var(--sab) + 104px)}
+.rest-fill{position:absolute;inset:0;background:var(--gold-soft);transform-origin:left;transition:transform 500ms linear;pointer-events:none}
+.rest-main{position:relative;flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
+.rest-l{font-size:12px;color:var(--text-faint);font-weight:500}
+.rest-t{font-size:19px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.01em;transition:color 200ms ease}
+.rest-n{font-size:12.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.restbar .chip,.restbar .del{position:relative}
+.restbar.ending .rest-t{color:var(--gold)}
+.restbar.ending{animation:restpulse 1s ease-in-out infinite}
+@keyframes restpulse{50%{box-shadow:var(--panel-shadow),0 0 0 4px color-mix(in srgb,var(--gold) 18%,transparent),var(--shadow)}}
 .badge-n{width:28px;height:28px;flex:none;border-radius:999px;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold);font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums}
 .sets{display:flex;flex-direction:column;gap:6px}
 .set{display:grid;grid-template-columns:28px 1fr 18px 1fr 32px;gap:8px;align-items:center}
@@ -275,6 +372,7 @@ textarea.field{height:auto;min-height:64px;padding:10px 14px;resize:none;line-he
 .lift-name{font-size:14.5px;font-weight:500}
 .lift-sub{font-size:12.5px;color:var(--text-faint);font-variant-numeric:tabular-nums}
 .spark{width:64px;height:24px;flex:none}
+.chart .raw circle{fill:var(--text-faint);opacity:.55}
 .spark path{fill:none;stroke:var(--gold);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .meas-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .inline-add{display:flex;gap:8px;margin-top:12px}
