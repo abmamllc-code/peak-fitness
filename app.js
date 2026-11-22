@@ -43,6 +43,7 @@ const I = {
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   scale: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9.5a4 4 0 0 1 6 0l-2 2.5"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.2 11.1c.5.4.9 1 .9 1.6V17h4.6v-1.3c0-.6.4-1.2.9-1.6A6 6 0 0 0 12 3z"/></svg>',
 };
 
 /* ================= Store ================= */
@@ -243,6 +244,112 @@ function dayswitch(kind, date, allowFuture) {
 }
 const isOpen = id => U.open.has(id) ? ' open' : '';
 
+/* Photos, batch sizes and freezer-to-plate guides, keyed by the plan tag.
+   Portions follow a meal that is eaten every day (7× a week) inside the 3,000 kcal plan. */
+const MEAL_GUIDES = {
+  m1: {
+    photo: 'assets/meals/chicken-rice.jpg', alt: 'Chicken, white rice and broccoli',
+    credit: 'Roman Odintsov', source: 'https://www.pexels.com/photo/rice-toppings-and-french-fries-on-the-table-5836771/', licence: 'Pexels Licence',
+    portions: '4 portions per cook', batch: '800g chicken thighs, 440g dry rice, 400g broccoli, 40g olive oil',
+    why: 'This meal is every day. Four portions is one pan of thighs and one pot of rice, small enough to cool within an hour. Cook it twice a week and the spare portion in the freezer covers the seventh day.',
+    steps: [
+      ['Weigh the batch', '800g skinless chicken thighs, 440g dry rice, 400g broccoli and 40g olive oil. That is four plates of the usual 200g chicken, 110g rice, 100g broccoli and 10g oil (755 kcal each). A 1kg pack leaves 200g: freeze that raw for the next cook.'],
+      ['Cook the rice', 'Rinse the rice until the water runs mostly clear. Put it in a pot with 660ml water, bring it to the boil, then cover and simmer on low for about 12 minutes. Take it off the heat and leave it covered for 5 minutes. Spread it on a tray so it stops steaming.'],
+      ['Cook the chicken', 'Pat the thighs dry and season them. Heat the oven to 200°C, toss the thighs with the oil and roast for about 22–28 minutes, or brown them in a pan for about 6–8 minutes a side. They are done when the thickest part is 75°C and the juices run clear, with no pink left. Rest them for a few minutes.'],
+      ['Cook the broccoli', 'The broccoli is bought frozen. Steam it, or microwave it with a splash of water, for about 4–5 minutes until tender. It softens again when you reheat it, so stop while it is still bright.'],
+      ['Portion it', 'Four boxes: chicken, rice and broccoli in each. Eat one today.'],
+      ['Cool and freeze the rest', 'Spread the other boxes out and get them into the fridge within an hour. Tomorrow’s box can stay in the fridge. Freeze the other two the same day, lids on, labelled with the date. Flat boxes freeze faster. They keep for about a month.'],
+      ['Freezer to plate', 'The night before, move one box into the fridge. A flat portion thaws in about 12 hours. If you forgot, use the microwave defrost setting, turn it once, then reheat it straight away. Don’t leave it on the counter.'],
+      ['Reheat', 'Cover the box, add a splash of water so the rice doesn’t dry out, and heat until it is piping hot and steaming in the middle. Stir halfway so the centre gets hot. A covered pan works too. Only reheat it once.'],
+    ],
+    safety: [
+      'Cool cooked rice and chicken within an hour. Cooked rice should not sit in the fridge more than a day, because of Bacillus cereus.',
+      'Reheat until piping hot all the way through. Only once.',
+      'Don’t refreeze a portion you have thawed and reheated. Raw chicken thawed in the fridge can be cooked, then frozen.',
+      'Thaw in the fridge, not on the counter. Microwave defrost only if you reheat immediately.',
+    ],
+  },
+  snack: {
+    photo: 'assets/meals/snack-yogurt.jpg', alt: 'Yogurt topped with green grapes and blueberries',
+    credit: 'Uswa Khalid', source: 'https://www.pexels.com/photo/healthy-yogurt-bowl-with-fresh-fruits-and-nuts-35279228/', licence: 'Pexels Licence',
+    portions: '7 pots on shop day', batch: '1,750g Greek yogurt and 140g honey, then fruit when you eat',
+    why: 'This is every day, and it isn’t a cooked meal. Portion the yogurt and honey for the week on shop day. Add the fruit at the bowl so nothing goes watery in the fridge.',
+    steps: [
+      ['Set out 7 pots', 'One for each day. The weekly shop is 2 × 1kg yogurt, and seven portions use 1,750g, so one tub is spare.'],
+      ['Portion the yogurt and honey', 'Each pot: 250g full-fat Greek yogurt and 20g honey, stirred in. That is 460 kcal, with 25g protein. Lid on, straight into the fridge. Eat them within the week and by the date on the tub.'],
+      ['Leave the fruit alone', 'Berries stay in the freezer (the monthly shop is frozen mixed berries). Grapes stay whole in the fridge.'],
+      ['Build the bowl', 'When you eat it, add 100g berries and 150g grapes. Frozen berries are fine as they are, or give them about 10 minutes on the counter. Don’t microwave them into the yogurt.'],
+      ['Don’t freeze the finished snack', 'Yogurt turns grainy and grapes turn mushy. If you thaw a handful of berries, eat them. Don’t put them back in the freezer.'],
+    ],
+    safety: [
+      'Keep the pots in the fridge and use them within the week.',
+      'Don’t leave yogurt out of the fridge while you eat something else and then put it back for tomorrow.',
+      'Don’t refreeze thawed berries.',
+      'This one is eaten cold. There is nothing to reheat.',
+    ],
+  },
+  pre: {
+    photo: 'assets/meals/bananas-dates.jpg', alt: 'Bananas beside a bowl of dates',
+    credit: 'daSupremo', source: 'https://commons.wikimedia.org/wiki/File:Bananas_and_dates_in_a_tray.jpg', licence: 'CC BY-SA 4.0',
+    portions: '1 portion, no cooking', batch: '2 bananas and 3 Medjool dates',
+    why: 'Eaten every day, 30–60 minutes before the gym. Nothing to batch-cook or freeze: bananas you want to eat whole don’t survive the freezer, and dates live in the cupboard.',
+    steps: [
+      ['Take one portion', '2 bananas and 3 Medjool dates. That is the whole meal: 410 kcal, mostly carbohydrate, so it is easy to train on.'],
+      ['Time it', 'Eat it 30–60 minutes before the gym. On a rest day it is still on the plan: have it whenever it suits you.'],
+      ['If you are going out', 'Pack it in the morning. Put the dates in a small tub so they don’t get crushed in the bag.'],
+      ['How to store the rest', 'Dates keep in a sealed tub in the cupboard. Bananas stay at room temperature. If a bunch is ripening too fast, the fridge slows them down for a couple of days. The skin goes brown; the fruit is fine.'],
+      ['Don’t freeze them for this meal', 'A frozen banana is mushy once it thaws, so it is no good as a pre-gym snack. Brown ones you won’t eat in time can be peeled and frozen for something else, but that is not this meal.'],
+    ],
+    safety: [
+      'No cooking, no reheating, no refreezing.',
+      'Throw away a banana that is leaking or smells fermented.',
+      'Keep dates in a sealed tub so they stay soft rather than drying out.',
+    ],
+  },
+  post: {
+    photo: 'assets/meals/potatoes.jpg', alt: 'Seasoned potato chunks from an air fryer',
+    credit: 'Vimkay', source: 'https://commons.wikimedia.org/wiki/File:Potatoes_coated_with_spices_and_fried_in_an_air-fryer.jpg', licence: 'CC BY-SA 4.0',
+    portions: '3 portions per cook', batch: '960g potatoes',
+    why: 'This is every day, straight after the gym. Three portions is one parboil, and it matches how long cooked potatoes keep in the fridge. A 2.5kg bag is about a week (320g a day), so two cooks cover it.',
+    steps: [
+      ['Weigh and cut', '960g potatoes, about three of the usual 320g portions (250 kcal each). Wash them, cut even 3cm chunks, and leave the skins on.'],
+      ['Parboil', 'Boil for about 8 minutes until the outside is just tender. Drain well and let them steam dry in the colander. That dry edge is what goes crisp in the air fryer.'],
+      ['The portion you are eating now', 'Heat the air fryer to 200°C. Toss one portion with a few sprays of 1-cal oil and the potato seasoning. Cook about 15–20 minutes, shaking halfway, until the chunks are crisp and piping hot in the middle.'],
+      ['Cool the other two', 'Spread them out and get them cold within an hour. Fridge for up to 3 days, or freeze them flat, labelled, for about a month.'],
+      ['Freezer or fridge to plate', 'From the fridge: same air fry, 200°C, 15–20 minutes, until piping hot. From the freezer: add about 8–10 minutes, and don’t let them sit half-thawed on the side. Microwave defrost only if they go straight into the air fryer.'],
+      ['One portion from raw', 'If you didn’t batch: 320g chunks, 200°C, about 22–28 minutes, shake halfway. No parboil needed for a single portion.'],
+    ],
+    safety: [
+      'Cool cooked potatoes within an hour. Eat fridge portions within 3 days.',
+      'Reheat until piping hot, once only.',
+      'Don’t refreeze potatoes you have thawed and air-fried.',
+      'Eat this straight after the gym, while it is still the post-training meal.',
+    ],
+  },
+  dinner: {
+    photo: 'assets/meals/dinner-mince.jpg', alt: 'White rice with beef mince and a fried egg',
+    credit: 'MICDWIM YAINZ RPMMO', source: 'https://commons.wikimedia.org/wiki/File:HK_TST_%E5%B0%96%E6%B2%99%E5%92%80_Tsim_Sha_Tsui_%E7%B7%AC%E7%94%B8%E8%87%BA_3_Minden_Row_%E6%81%86%E6%98%9F%E6%A8%93_Star_Mansion_%E7%A8%BB%E9%A6%99%E9%9B%86%E5%9C%98_Tao_Heung_Restaurant_food_steamed_beef_minced_cake_rice_n_pan-fried_egg_December_2022_Px3_04.jpg', licence: 'CC BY-SA 4.0',
+    portions: '4 portions per cook', batch: '600g beef mince, 600g dry rice, 80g oil or butter. Eggs cooked fresh.',
+    why: 'The biggest meal, every day (1,120 kcal). Four portions is one pan of mince and one pot of rice. Cook it twice a week. The eggs are cooked when you eat, two per plate, so they don’t turn rubbery in the freezer.',
+    steps: [
+      ['Weigh the batch', '600g 10% beef mince, 600g dry rice and 80g olive oil or butter. That is four plates of 150g mince, 150g rice and 20g fat. A 500g pack is a little short, so use one pack plus 100g of the next, or four of the 150g raw bags if you already portioned the monthly shop.'],
+      ['Cook the rice', 'Rinse it, then simmer 600g rice with about 900ml water, covered, for about 12 minutes. Rest it for 5 minutes and spread it on a tray to stop it steaming.'],
+      ['Brown the mince', 'Heat the oil or butter and brown the mince, breaking it up, until there is no pink and the middle is 75°C. Keep the fat in the pan. It is part of the calories. Season it.'],
+      ['Portion the boxes', 'Four boxes of mince and rice. Leave the eggs out. Eat one box today.'],
+      ['Cool and freeze', 'Get the other boxes into the fridge within an hour. Tomorrow’s box can stay there. Freeze the rest the same day, flat and labelled. About a month in the freezer.'],
+      ['Freezer to plate', 'Move one box to the fridge the night before (about 12 hours). Or microwave-defrost, turn it once, and reheat immediately. Cover it, add a splash of water, and heat until the rice and mince are piping hot in the middle. Stir halfway. Only once.'],
+      ['Cook the eggs', '2 eggs per plate, in a dry non-stick pan or with 1-cal spray. The 20g of oil is already in the mince and rice, so the eggs don’t get more. Fry or scramble them at the end and put them on top.'],
+    ],
+    safety: [
+      'Cool the rice within an hour. Don’t keep cooked rice in the fridge more than a day.',
+      'Reheat the mince and rice until piping hot, once only. Don’t refreeze it.',
+      'Raw mince thawed in the fridge can be cooked and then frozen. Don’t refreeze it raw.',
+      'Thaw in the fridge, not on the counter. Cook the eggs fresh and eat them straight away.',
+    ],
+  },
+};
+const mealGuide = m => (m && m.tag && MEAL_GUIDES[m.tag]) || null;
+
 /* ================= Meals view ================= */
 function modeSeg() {
   const i = U.mealsMode === 'shop' ? 1 : 0;
@@ -254,6 +361,7 @@ function renderMeals() {
   const date = U.mealsDate, meals = getMeals(date);
   const rows = meals.map(m => `<div class="item${m.done ? ' done' : ''}${isOpen(m.id)}" data-meal="${m.id}">${mealHead(m)}
       <div class="expand"><div class="expand-in"><div class="expand-body">
+        ${mealExtra(m)}
         <div class="form-grid">
           <div class="mini-field span4"><label>Name</label><input class="field" data-mf="name" value="${esc(m.name)}" placeholder="Meal name"></div>
           <div class="mini-field span4"><label>What's in it</label><textarea class="field" data-mf="items" rows="2" placeholder="e.g. 4 eggs, 2 toast, avocado">${esc(m.items)}</textarea></div>
@@ -277,11 +385,20 @@ function renderMeals() {
     <p class="foot-note" id="planNote">${same ? 'Your daily plan. It repeats every day, ticks reset each morning.' : 'Changed for this day only. Save as daily plan to repeat it.'}</p>`;
 }
 function mealHead(m) {
+  const g = mealGuide(m);
   const sub = m.items ? esc(m.items) : (num(m.p) || num(m.c) || num(m.f)) ? `P ${fmt(num(m.p), 0)}  C ${fmt(num(m.c), 0)}  F ${fmt(num(m.f), 0)}` : '';
+  const thumb = g ? `<img class="meal-thumb" src="${g.photo}" alt="">` : '';
   return `<div class="item-head" data-act="toggle">
     <button class="check" data-act="tick" aria-label="Tick off ${esc(m.name)}">${I.check}</button>
-    <div class="item-main"><div class="item-title">${esc(m.name || 'Untitled meal')}</div>${sub ? `<div class="item-sub">${sub}</div>` : ''}</div>
+    <div class="item-main meal-main">${thumb}<div class="item-copy"><div class="item-title">${esc(m.name || 'Untitled meal')}</div>${sub ? `<div class="item-sub">${sub}</div>` : ''}</div></div>
     <div class="item-val">${num(m.cals) ? fmtInt(num(m.cals)) + ' kcal' : '<span class="faint">Set kcal</span>'}</div>${I.chev}</div>`;
+}
+function mealExtra(m) {
+  const g = mealGuide(m); if (!g) return '';
+  return `<figure class="meal-fig"><img class="meal-photo" src="${g.photo}" alt="${esc(g.alt)}" width="960" height="720">
+    <figcaption class="meal-credit">${esc(g.credit)} · ${esc(g.licence)}</figcaption></figure>
+    <div class="meal-tools"><div class="meal-port"><b>${esc(g.portions)}</b><span>${esc(g.batch)}</span></div>
+    <button type="button" class="bulb" data-act="guide" data-tag="${esc(m.tag)}" aria-label="Recipe guide for ${esc(m.name)}">${I.bulb}<span>Recipe</span></button></div>`;
 }
 const goalKcal = t => num(S.targets.kcal) || t.planned;
 function mealSummaryInner(date) {
@@ -337,7 +454,7 @@ const SHOP_WHERE = [
   '<b>Morrisons</b> for frozen berries and broccoli, Greek yogurt, 1-cal spray, honey, butter and eggs.',
   '<b>Veg market</b> for bananas, grapes and potatoes — usually cheaper than the supermarket.',
 ];
-const SHOP_PREP = ['Freeze meat as soon as you get home, portioned per day.', 'Defrost tomorrow’s portions in the fridge the night before.', 'Keep potatoes in a cool, dark cupboard away from onions.', 'Batch cook rice for 2–3 days at a time.'];
+const SHOP_PREP = ['Freeze meat as soon as you get home, portioned per day.', 'Defrost tomorrow’s portions in the fridge the night before.', 'Keep potatoes in a cool, dark cupboard away from onions.', 'Batch cook rice, cool it within an hour, and freeze what you won’t eat tomorrow. Cooked rice shouldn’t sit in the fridge more than a day.'];
 const weekStart = d => addDays(d, -mod(parseISO(d).getDay() - 1, 7)); // Monday
 function shopSync() { const ws = weekStart(today()); if (S.shop.weekOf !== ws) { S.shop.week = {}; S.shop.weekOf = ws; save(); } }
 const monthItems = () => SHOP.month.flatMap(g => g.items);
@@ -688,6 +805,11 @@ views.addEventListener('click', e => {
       break;
     }
     case 'collapse': item.classList.remove('open'); U.open.delete(mealId || exId); break;
+    case 'guide': {
+      e.stopPropagation();
+      const gm = mealId && findMeal(U.mealsDate, mealId);
+      openGuide(a.dataset.tag, gm && gm.name); break;
+    }
     case 'sum': { const box = $('#mealSummary'); U.sumOpen = !U.sumOpen; box.classList.toggle('open', U.sumOpen); break; }
     case 'meal-mode': {
       const m = a.dataset.m === 'shop' ? 'shop' : 'meals'; if (m === U.mealsMode) break;
@@ -967,6 +1089,7 @@ function importData() {
 /* ================= Tabs ================= */
 const TABS = ['meals', 'gym', 'progress'];
 function setTab(tab, initial) {
+  closeGuide();
   U.tab = tab; localStorage.setItem('peakfit.tab', tab);
   $$('.tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === tab));
   $('#tabInd').style.transform = `translateX(${TABS.indexOf(tab) * 100}%)`;
@@ -982,7 +1105,7 @@ function applyTheme(t, animate) {
   const html = document.documentElement;
   if (animate && !reduceMotion()) { html.classList.add('theme-fade'); getComputedStyle(html).getPropertyValue('--bg'); }
   html.setAttribute('data-theme', t);
-  const mt = $('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', t === 'light' ? '#f2f2f2' : '#0a0a0a');
+  const mt = $('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', t === 'light' ? '#e7f3fc' : '#0b1526');
   if (animate) { clearTimeout(applyTheme._t); applyTheme._t = setTimeout(() => html.classList.remove('theme-fade'), 340); }
 }
 $('#themeBtn').addEventListener('click', () => {
@@ -1245,7 +1368,33 @@ function apply(text) {
 micBtn.addEventListener('click', () => { if (sheet.classList.contains('open')) { if (listening) { try { rec.stop(); } catch (_) {} } else startListening(); return; } openSheet(); startListening(); });
 sheet.addEventListener('click', e => { if (e.target.hasAttribute('data-close')) closeSheet(); const h = e.target.closest('[data-hint]'); if (h) { stopListening(); vInput.value = h.dataset.hint; vInput.focus(); setStatus('Edit, then Apply'); } });
 $('#voiceForm').addEventListener('submit', e => { e.preventDefault(); stopListening(); const t = vInput.value.trim(); if (t) apply(t); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.classList.contains('open')) closeSheet(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (sheet.classList.contains('open')) closeSheet();
+  if ($('#guideSheet').classList.contains('open')) closeGuide();
+});
+
+/* ================= Recipe guide ================= */
+function openGuide(tag, name) {
+  const g = MEAL_GUIDES[tag]; if (!g) return;
+  const title = name || (S.plan.find(m => m.tag === tag) || {}).name || g.alt;
+  $('#guideBody').innerHTML = `<div class="guide-top"><div><div class="card-kicker">Recipe</div><h2 id="guideTitle">${esc(title)}</h2></div>
+    <button class="icon-btn" type="button" data-close aria-label="Close recipe">${I.x}</button></div>
+    <img class="meal-photo guide-photo" src="${g.photo}" alt="${esc(g.alt)}">
+    <div class="meal-port guide-port"><b>${esc(g.portions)}</b><span>${esc(g.batch)}</span></div>
+    <p class="guide-why">${esc(g.why)}</p>
+    <ol class="guide-steps">${g.steps.map(([t, d], i) => `<li><span class="guide-n">${i + 1}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></li>`).join('')}</ol>
+    <div class="guide-safety"><b>Food safety</b><ul>${g.safety.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>
+    <p class="guide-credit">Photo: ${esc(g.credit)} · ${esc(g.licence)}</p>`;
+  const wrap = $('#guideSheet');
+  wrap.classList.add('open'); wrap.setAttribute('aria-hidden', 'false');
+  $('#guideBody').scrollTop = 0;
+}
+function closeGuide() {
+  const wrap = $('#guideSheet'); if (!wrap) return;
+  wrap.classList.remove('open'); wrap.setAttribute('aria-hidden', 'true');
+}
+$('#guideSheet').addEventListener('click', e => { if (e.target.hasAttribute('data-close') || e.target.closest('[data-close]')) closeGuide(); });
 
 /* ================= Boot ================= */
 bindChartScrub(views);

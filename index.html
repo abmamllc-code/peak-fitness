@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>PEAK Fitness</title>
 <meta name="description" content="PEAK Fitness — meals, gym and progress.">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#0b1526">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <script>
 /* Set theme before first paint so there is no flash */
-(function(){try{var t=localStorage.getItem('peakfit.theme');if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+(function(){try{var t=localStorage.getItem('peakfit.theme');if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'}document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#e7f3fc':'#0b1526')}catch(e){}})();
 </script>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -90,6 +90,14 @@
       <button class="chip" data-hint="bodyweight 82.5">bodyweight 82.5</button>
       <button class="chip" data-hint="waist 34">waist 34</button>
     </div>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="guideSheet" aria-hidden="true">
+  <div class="sheet-scrim" data-close></div>
+  <div class="sheet sheet-guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <div class="sheet-grip"></div>
+    <div class="guide-scroll" id="guideBody"></div>
   </div>
 </div>
 
