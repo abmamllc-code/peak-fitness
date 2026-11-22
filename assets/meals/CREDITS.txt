@@ -1,0 +1,26 @@
+Meal photos are stored in this folder so the app works offline. Crops are derivatives of the originals.
+
+chicken-rice.jpg
+  Chicken, white rice and broccoli. Cropped from a wider photo so the plate is just this meal.
+  Roman Odintsov — https://www.pexels.com/photo/rice-toppings-and-french-fries-on-the-table-5836771/
+  Pexels Licence — https://www.pexels.com/license/
+
+snack-yogurt.jpg
+  Yogurt with green grapes and blueberries. The photo also shows banana, nuts and seeds, which are not in this portion.
+  Uswa Khalid — https://www.pexels.com/photo/healthy-yogurt-bowl-with-fresh-fruits-and-nuts-35279228/
+  Pexels Licence — https://www.pexels.com/license/
+
+bananas-dates.jpg
+  Bananas and dates. Cropped from the original.
+  daSupremo — https://commons.wikimedia.org/wiki/File:Bananas_and_dates_in_a_tray.jpg
+  CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
+
+potatoes.jpg
+  Potato chunks coated with spices and cooked in an air fryer.
+  Vimkay — https://commons.wikimedia.org/wiki/File:Potatoes_coated_with_spices_and_fried_in_an_air-fryer.jpg
+  CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
+
+dinner-mince.jpg
+  White rice, beef mince and a fried egg. Cropped to remove a camera timestamp. The plan uses two eggs, cooked fresh.
+  MICDWIM YAINZ RPMMO — https://commons.wikimedia.org/wiki/File:HK_TST_%E5%B0%96%E6%B2%99%E5%92%80_Tsim_Sha_Tsui_%E7%B7%AC%E7%94%B8%E8%87%BA_3_Minden_Row_%E6%81%86%E6%98%9F%E6%A8%93_Star_Mansion_%E7%A8%BB%E9%A6%99%E9%9B%86%E5%9C%98_Tao_Heung_Restaurant_food_steamed_beef_minced_cake_rice_n_pan-fried_egg_December_2022_Px3_04.jpg
+  CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
