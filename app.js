@@ -50,11 +50,11 @@ const I = {
 const KEY = 'peakfit.data.v1';
 /* Lean bulk, phase 1: Adnan's daily plan (weights raw / uncooked unless stated) */
 const SEED_PLAN = () => [
-  { tag: 'm1', name: 'Chicken & rice', cals: 755, p: 50, c: 93, f: 19, items: '200g boneless skinless chicken thighs, 110g rice (dry weight), 100g broccoli, 10g olive oil in the seasoning' },
+  { tag: 'm1', name: 'Chicken & rice', cals: 755, p: 50, c: 93, f: 19, items: '200g boneless skinless chicken thighs, 110g rice (rice cooker), 100g broccoli, 10g olive oil in the seasoning' },
   { tag: 'snack', name: 'Snack', cals: 460, p: 25, c: 63, f: 13, items: '250g full-fat Greek yogurt, 100g berries, 150g grapes, 20g honey' },
   { tag: 'pre', name: 'Pre-gym', cals: 410, p: 4, c: 108, f: 1, items: '2 bananas, 3 Medjool dates. 30–60 mins before the gym' },
   { tag: 'post', name: 'Post-gym potatoes', cals: 250, p: 6, c: 55, f: 0, items: '320g potatoes, tossed in the leftover chicken seasoning and air-fried. Straight after the gym' },
-  { tag: 'dinner', name: 'Dinner', cals: 1120, p: 53, c: 119, f: 45, items: '150g rice (dry weight), 150g beef mince (10% fat), 2 eggs, 20g olive oil or butter (cook with it / drizzle over rice)' },
+  { tag: 'dinner', name: 'Dinner', cals: 1120, p: 53, c: 119, f: 45, items: '150g rice (rice cooker), 150g 10% beef mince (defrosted), 2 eggs fried fresh, 20g butter or oil' },
 ].map(m => Object.assign({ id: uid() }, m));
 const SEED_TARGETS = () => ({ kcal: 3000, p: 130, c: 440, f: 80 });
 
@@ -104,12 +104,20 @@ function load() {
     }
     // Bring the default cook notes in line with the air-fryer method, and leave anything edited by hand.
     const cookCopy = {
-      m1: ['200g chicken thighs (skinless), 110g rice (dry weight), 100g broccoli, 10g olive oil to cook', '200g boneless skinless chicken thighs, 110g rice (dry weight), 100g broccoli, 10g olive oil in the seasoning'],
-      post: ['320g potatoes, air-fried (few sprays of oil + seasoning). Straight after the gym', '320g potatoes, tossed in the leftover chicken seasoning and air-fried. Straight after the gym'],
+      m1: ['200g boneless skinless chicken thighs, 110g rice (rice cooker), 100g broccoli, 10g olive oil in the seasoning', [
+        '200g chicken thighs (skinless), 110g rice (dry weight), 100g broccoli, 10g olive oil to cook',
+        '200g boneless skinless chicken thighs, 110g rice (dry weight), 100g broccoli, 10g olive oil in the seasoning',
+      ]],
+      post: ['320g potatoes, tossed in the leftover chicken seasoning and air-fried. Straight after the gym', [
+        '320g potatoes, air-fried (few sprays of oil + seasoning). Straight after the gym',
+      ]],
+      dinner: ['150g rice (rice cooker), 150g 10% beef mince (defrosted), 2 eggs fried fresh, 20g butter or oil', [
+        '150g rice (dry weight), 150g beef mince (10% fat), 2 eggs, 20g olive oil or butter (cook with it / drizzle over rice)',
+      ]],
     };
     const patchMeals = ms => {
       if (!Array.isArray(ms)) return;
-      ms.forEach(m => { const fix = m && cookCopy[m.tag]; if (fix && m.items === fix[0]) m.items = fix[1]; });
+      ms.forEach(m => { const fix = m && cookCopy[m.tag]; if (fix && fix[1].includes(m.items)) m.items = fix[0]; });
     };
     patchMeals(out.plan);
     Object.keys(out.days).forEach(k => patchMeals(out.days[k] && out.days[k].meals));
@@ -261,24 +269,18 @@ const MEAL_GUIDES = {
   m1: {
     photo: 'assets/meals/chicken-rice.jpg', alt: 'Chicken, white rice and broccoli',
     credit: 'Roman Odintsov', source: 'https://www.pexels.com/photo/rice-toppings-and-french-fries-on-the-table-5836771/', licence: 'Pexels Licence',
-    portions: '4 portions per cook', batch: '800g chicken thighs, 440g dry rice, 400g broccoli, 40g olive oil',
-    why: 'This meal is every day. Four portions is one bowl of thighs and one pot of rice, small enough to cool within an hour. Cook it twice a week and the spare portion in the freezer covers the seventh day.',
+    portions: '4 portions per cook', batch: '800g chicken thighs, 3 rice-cooker cups of rice (~440g), 400g broccoli, 40g olive oil',
+    why: 'Rice cooker for the rice. Glass-bowl air fryer, Air Fry, for the chicken.',
     steps: [
-      ['Weigh the batch', '800g boneless skinless chicken thighs, 440g dry rice, 400g broccoli and 40g olive oil. That is four plates of the usual 200g chicken, 110g rice, 100g broccoli and 10g oil (755 kcal each). A 1kg pack leaves 200g: freeze that raw for the next cook.'],
-      ['Cook the rice', 'Rinse the rice until the water runs mostly clear. Put it in a pot with 660ml water, bring it to the boil, then cover and simmer on low for about 12 minutes. Take it off the heat and leave it covered for 5 minutes. Spread it on a tray so it stops steaming.'],
-      ['Season the chicken', 'Put the thighs in a glass bowl. Add smoked paprika, salt, garlic powder, onion powder, mixed herbs, rosemary and the 40g olive oil, and mix well so every piece is coated. Leave the bowl as it is when the chicken comes out: the potatoes use what is left.'],
-      ['Air fry the chicken', 'Heat the air fryer to 200°C. Cook the thighs for 15 minutes on the first side, flip them, then another 5–10 minutes, until the thickest piece is 75°C in the middle. Rest for 5 minutes, then slice.'],
-      ['Cook the broccoli', 'The broccoli is bought frozen. Steam it, or microwave it with a splash of water, for about 4–5 minutes until tender. It softens again when you reheat it, so stop while it is still bright.'],
-      ['Portion it', 'Four boxes: chicken, rice and broccoli in each. Eat one today.'],
-      ['Cool and freeze the rest', 'Spread the other boxes out and get them into the fridge within an hour. Tomorrow’s box can stay in the fridge. Freeze the other two the same day, lids on, labelled with the date. Flat boxes freeze faster. They keep for about a month.'],
-      ['Freezer to plate', 'The night before, move one box into the fridge. A flat portion thaws in about 12 hours. If you forgot, use the microwave defrost setting, turn it once, then reheat it straight away. Don’t leave it on the counter.'],
-      ['Reheat', 'Cover the box, add a splash of water so the rice doesn’t dry out, and heat until it is piping hot and steaming in the middle. Stir halfway so the centre gets hot. A covered pan works too. Only reheat it once.'],
+      ['Rice', 'Rice cooker. 3 rice-cooker cups of rice (about 440g). Rinse 2–3 times until the water is mostly clear. Water to the 3 line (or about 3.5 cups), and a pinch of salt. Cook. When it switches to warm, rest 10 minutes.'],
+      ['Chicken', '800g boneless skinless thighs in the air fryer glass bowl. Add smoked paprika, salt, garlic powder, onion powder, mixed herbs, rosemary and the 40g olive oil. Mix. Air Fry, 200°C: 15 minutes on the first side, flip, then 5–10 minutes more, until the thickest piece is 75°C. Rest 5 minutes, then slice.'],
+      ['Broccoli', 'Frozen broccoli. Microwave or steam for 4–5 minutes.'],
+      ['Box up', '4 boxes. Cool the rice within an hour. 1 in the fridge, freeze 3.'],
+      ['Reheat', 'Recrisp, or microwave, until piping hot. Don’t refreeze.'],
     ],
     safety: [
-      'Cool cooked rice and chicken within an hour. Cooked rice should not sit in the fridge more than a day, because of Bacillus cereus.',
-      'Reheat until piping hot all the way through. Only once.',
-      'Don’t refreeze a portion you have thawed and reheated. Raw chicken thawed in the fridge can be cooked, then frozen.',
-      'Thaw in the fridge, not on the counter. Microwave defrost only if you reheat immediately.',
+      'Cool the rice within an hour. Don’t leave cooked rice in the fridge more than a day.',
+      'Reheat until piping hot. Don’t refreeze.',
     ],
   },
   snack: {
@@ -322,14 +324,10 @@ const MEAL_GUIDES = {
     photo: 'assets/meals/potatoes.jpg', alt: 'Seasoned potato chunks from an air fryer',
     credit: 'Vimkay', source: 'https://commons.wikimedia.org/wiki/File:Potatoes_coated_with_spices_and_fried_in_an_air-fryer.jpg', licence: 'CC BY-SA 4.0',
     portions: '3 portions per cook', batch: '960g potatoes',
-    why: 'This is every day, straight after the gym. Three portions is one air-fryer batch, and it matches how long cooked potatoes keep in the fridge. A 2.5kg bag is about a week (320g a day), so two cooks cover it. Cook them in the same session as the chicken so they pick up the leftover seasoning.',
+    why: 'Straight after the gym. Same glass bowl as the chicken, no extra seasoning.',
     steps: [
-      ['Weigh and cut', '960g potatoes, about three of the usual 320g portions (250 kcal each). Wash them, cut even 3cm chunks, and leave the skins on.'],
-      ['Use the chicken bowl', 'While the chicken is in the air fryer, put the chunks in the same glass bowl. Don’t add more seasoning or oil. The leftover marinade is enough. Toss until the chunks are coated.'],
-      ['Air fry the potatoes', 'When the chicken comes out, or in the other drawer if the fryer has one, air fry the chunks at 200°C for about 20–25 minutes. Shake halfway. They are done when they are golden and a knife slides through the middle.'],
-      ['Cool the other two', 'Spread them out and get them cold within an hour. Fridge for up to 3 days, or freeze them flat, labelled, for about a month.'],
-      ['Freezer or fridge to plate', 'From the fridge: same air fry, 200°C, 15–20 minutes, until piping hot. From the freezer: add about 8–10 minutes, and don’t let them sit half-thawed on the side. Microwave defrost only if they go straight into the air fryer.'],
-      ['One portion from raw', 'If you didn’t batch: 320g chunks, tossed in whatever is left in the chicken bowl, 200°C for about 20–25 minutes, shake halfway.'],
+      ['Same bowl', 'While the chicken cooks, toss the potatoes in that glass bowl. No extra seasoning. The leftover marinade is enough.'],
+      ['Air fry', 'Air Fry, 200°C, about 20–25 minutes, until golden.'],
     ],
     safety: [
       'Cool cooked potatoes within an hour. Eat fridge portions within 3 days.',
@@ -341,22 +339,18 @@ const MEAL_GUIDES = {
   dinner: {
     photo: 'assets/meals/dinner-mince.jpg', alt: 'White rice with beef mince and a fried egg',
     credit: 'MICDWIM YAINZ RPMMO', source: 'https://commons.wikimedia.org/wiki/File:HK_TST_%E5%B0%96%E6%B2%99%E5%92%80_Tsim_Sha_Tsui_%E7%B7%AC%E7%94%B8%E8%87%BA_3_Minden_Row_%E6%81%86%E6%98%9F%E6%A8%93_Star_Mansion_%E7%A8%BB%E9%A6%99%E9%9B%86%E5%9C%98_Tao_Heung_Restaurant_food_steamed_beef_minced_cake_rice_n_pan-fried_egg_December_2022_Px3_04.jpg', licence: 'CC BY-SA 4.0',
-    portions: '4 portions per cook', batch: '600g beef mince, 600g dry rice, 80g oil or butter. Eggs cooked fresh.',
-    why: 'The biggest meal, every day (1,120 kcal). Four portions is one pan of mince and one pot of rice. Cook it twice a week. The eggs are cooked when you eat, two per plate, so they don’t turn rubbery in the freezer.',
+    portions: '4 portions per cook', batch: '600g 10% beef mince, 4 rice-cooker cups of rice (~600g), 80g butter or oil. Eggs fried fresh.',
+    why: 'Start the rice cooker first. Defrosted mince goes straight into the glass-bowl air fryer.',
     steps: [
-      ['Weigh the batch', '600g 10% beef mince, 600g dry rice and 80g olive oil or butter. That is four plates of 150g mince, 150g rice and 20g fat. A 500g pack is a little short, so use one pack plus 100g of the next, or four of the 150g raw bags if you already portioned the monthly shop.'],
-      ['Cook the rice', 'Rinse it, then simmer 600g rice with about 900ml water, covered, for about 12 minutes. Rest it for 5 minutes and spread it on a tray to stop it steaming.'],
-      ['Brown the mince', 'Heat the oil or butter and brown the mince, breaking it up, until there is no pink and the middle is 75°C. Keep the fat in the pan. It is part of the calories. Season it.'],
-      ['Portion the boxes', 'Four boxes of mince and rice. Leave the eggs out. Eat one box today.'],
-      ['Cool and freeze', 'Get the other boxes into the fridge within an hour. Tomorrow’s box can stay there. Freeze the rest the same day, flat and labelled. About a month in the freezer.'],
-      ['Freezer to plate', 'Move one box to the fridge the night before (about 12 hours). Or microwave-defrost, turn it once, and reheat immediately. Cover it, add a splash of water, and heat until the rice and mince are piping hot in the middle. Stir halfway. Only once.'],
-      ['Cook the eggs', '2 eggs per plate, in a dry non-stick pan or with 1-cal spray. The 20g of oil is already in the mince and rice, so the eggs don’t get more. Fry or scramble them at the end and put them on top.'],
+      ['Rice', 'Start this first. Rice cooker. 4 rice-cooker cups of rice (about 600g). Rinse 2–3 times until the water is mostly clear. Water to the 4 line (or about 4.5 cups), and a pinch of salt. Cook. When it switches to warm, rest 10 minutes.'],
+      ['Mince', '600g defrosted 10% beef mince, straight into the air fryer glass bowl. Season with 1 tsp salt, ½ tsp pepper, 1 tsp garlic powder, 1 tsp onion powder, 1–2 tsp smoked paprika, and if you want them, mixed herbs and a splash of soy sauce. Mix and break it up. Air Fry, 200°C, 12–15 minutes. Stir and break it up every 3–4 minutes, until there is no pink. Pour off the excess fat, then stir in the butter or oil (80g for the batch).'],
+      ['Box up', '4 boxes of mince and rice. Cool the rice within an hour. 1 in the fridge, freeze 3. Leave the eggs out.'],
+      ['When you eat', 'Reheat until piping hot. Recrisp works well. Fry 2 eggs fresh and put them on top. Don’t refreeze.'],
     ],
     safety: [
-      'Cool the rice within an hour. Don’t keep cooked rice in the fridge more than a day.',
-      'Reheat the mince and rice until piping hot, once only. Don’t refreeze it.',
-      'Raw mince thawed in the fridge can be cooked and then frozen. Don’t refreeze it raw.',
-      'Thaw in the fridge, not on the counter. Cook the eggs fresh and eat them straight away.',
+      'Cool the rice within an hour. Don’t leave cooked rice in the fridge more than a day.',
+      'Reheat until piping hot. Don’t refreeze.',
+      'Use defrosted mince. Fry the eggs fresh.',
     ],
   },
 };
@@ -445,9 +439,9 @@ function refreshMealSummary() {
 /* ================= Shopping ================= */
 const SHOP = {
   month: [
-    { g: 'Meat', note: 'Freeze in daily bags: 200g chicken, 150g mince', items: [['chicken', 'Chicken thighs, boneless and skinless', '6 × 1kg'], ['mince', 'Beef mince, 10% fat', '9 × 500g']] },
+    { g: 'Meat', note: 'Defrost before cooking. Daily portions: 200g chicken, 150g mince', items: [['chicken', 'Chicken thighs, boneless and skinless', '6 × 1kg'], ['mince', 'Beef mince, 10% fat', '9 × 500g']] },
     { g: 'Frozen', items: [['berries', 'Mixed berries', '4 × 750g'], ['broccoli', 'Broccoli', '3 × 1kg']] },
-    { g: 'Cupboard', items: [['rice', 'Rice', '10kg bag'], ['dates', 'Medjool dates', '~2kg (90)'], ['honey', 'Honey', '2 × 340g'], ['oil', 'Olive oil', '2 × 500ml'], ['spray', '1-cal spray oil', '1 can'], ['seasoning', 'Smoked paprika, garlic powder, onion powder, mixed herbs, rosemary', '1 of each'], ['butter', 'Butter (optional)', '3 × 250g']] },
+    { g: 'Cupboard', items: [['rice', 'Rice', '10kg bag'], ['dates', 'Medjool dates', '~2kg (90)'], ['honey', 'Honey', '2 × 340g'], ['oil', 'Olive oil', '2 × 500ml'], ['seasoning', 'Smoked paprika, garlic powder, onion powder, mixed herbs, rosemary, black pepper', '1 of each'], ['soy', 'Soy sauce', '1 bottle'], ['butter', 'Butter', '3 × 250g']] },
   ],
   week: [['bananas', 'Bananas', '14–15'], ['grapes', 'Grapes', '~1.1kg'], ['yogurt', 'Greek yogurt, full-fat', '2 × 1kg'], ['eggs', 'Eggs', '15 tray'], ['potatoes', 'Potatoes', '2.5kg bag']],
 };
@@ -457,16 +451,16 @@ const SHOP_AT = {
   berries: ['morrisons'], broccoli: ['morrisons'],
   rice: ['haris'], dates: ['haris', 'morrisons'],
   honey: ['morrisons', 'haris'], oil: ['haris', 'morrisons'],
-  spray: ['morrisons'], seasoning: ['morrisons', 'haris'], butter: ['morrisons'],
+  seasoning: ['morrisons', 'haris'], soy: ['morrisons', 'haris'], butter: ['morrisons'],
   bananas: ['veg', 'morrisons'], grapes: ['veg', 'morrisons'],
   yogurt: ['morrisons'], eggs: ['morrisons', 'veg'], potatoes: ['veg', 'morrisons'],
 };
 const SHOP_WHERE = [
   '<b>Haris & Co</b> for halal chicken and mince, and for bulk rice, dates and cupboard staples.',
-  '<b>Morrisons</b> for frozen berries and broccoli, Greek yogurt, 1-cal spray, honey, butter and eggs.',
+  '<b>Morrisons</b> for frozen berries and broccoli, Greek yogurt, soy sauce, honey, butter and eggs.',
   '<b>Veg market</b> for bananas, grapes and potatoes — usually cheaper than the supermarket.',
 ];
-const SHOP_PREP = ['Freeze meat as soon as you get home, portioned per day.', 'Defrost tomorrow’s portions in the fridge the night before.', 'Keep potatoes in a cool, dark cupboard away from onions.', 'Batch cook rice, cool it within an hour, and freeze what you won’t eat tomorrow. Cooked rice shouldn’t sit in the fridge more than a day.'];
+const SHOP_PREP = ['Portion the meat for the month and freeze it: 200g chicken, 150g mince.', 'Defrost the mince (and the chicken) in the fridge before you cook.', 'Keep potatoes in a cool, dark cupboard away from onions.', 'Rice goes in the rice cooker. Cool it within an hour: 1 box in the fridge, freeze the rest. Cooked rice shouldn’t sit in the fridge more than a day.'];
 const weekStart = d => addDays(d, -mod(parseISO(d).getDay() - 1, 7)); // Monday
 function shopSync() { const ws = weekStart(today()); if (S.shop.weekOf !== ws) { S.shop.week = {}; S.shop.weekOf = ws; save(); } }
 const monthItems = () => SHOP.month.flatMap(g => g.items);
