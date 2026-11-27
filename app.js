@@ -190,6 +190,7 @@ function blank() {
     workouts: {},                       // { 'YYYY-MM-DD': { exercises: [ {id,name,sets:[{id,reps,weight}]} ] } }
     bodyweight: [],                     // [ {id,date,value} ] (kg)
     measure: { unit: 'in', types: ['Chest', 'Arms', 'Waist'], entries: [] }, // entries: {id,date,type,value}
+    xp: { total: 0, seen: {}, celebrated: 1 },
   };
 }
 function load() {
@@ -207,6 +208,11 @@ function load() {
       workouts: d.workouts && typeof d.workouts === 'object' ? d.workouts : {},
       bodyweight: Array.isArray(d.bodyweight) ? d.bodyweight : [],
       measure: Object.assign(b.measure, d.measure || {}),
+      xp: {
+        total: d.xp && num(d.xp.total) || 0,
+        seen: d.xp && d.xp.seen && typeof d.xp.seen === 'object' ? d.xp.seen : {},
+        celebrated: d.xp && num(d.xp.celebrated) || 1,
+      },
     };
     // Seed the lean-bulk plan if the meals are still the untouched empty starters (never overwrite real data)
     const untouched = ms => Array.isArray(ms) && ms.every(m => !num(m.cals) && !String(m.items || '').trim() && !num(m.p) && !num(m.c) && !num(m.f));
@@ -260,6 +266,93 @@ function save() {
   catch (e) { toast('Could not save — storage is full or blocked', { err: true }); }
 }
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+/* ================= Levels =================
+   Step to the next level is round(25 × level^1.55). Level 1 needs 25 XP, then each step is bigger. */
+function xpNeed(level) { return Math.round(25 * Math.pow(Math.max(1, level), 1.55)); }
+function levelState(total) {
+  let level = 1, spent = 0, guard = 0;
+  while (spent + xpNeed(level) <= total && guard < 500) { spent += xpNeed(level); level++; guard++; }
+  return { level, into: total - spent, need: xpNeed(level), total: total || 0 };
+}
+function xpBucket(prefix) {
+  const seen = (S.xp && S.xp.seen) || {};
+  let n = 0, xp = 0;
+  Object.keys(seen).forEach(k => { if (k.startsWith(prefix)) { n++; xp += num(seen[k]); } });
+  return { n, xp };
+}
+function fullDay(date) {
+  const day = S.days[date];
+  const meals = day && Array.isArray(day.meals) ? day.meals : [];
+  return meals.length > 0 && meals.every(m => m.done);
+}
+function streakCount(date) {
+  let n = 0, d = date;
+  while (fullDay(d) && n < 60) { n++; d = addDays(d, -1); }
+  return n;
+}
+function grant(id, amount) {
+  if (!S.xp) S.xp = { total: 0, seen: {}, celebrated: 1 };
+  if (S.xp.seen[id]) return false;
+  const before = levelState(S.xp.total).level;
+  S.xp.seen[id] = amount;
+  S.xp.total += amount;
+  const after = levelState(S.xp.total).level;
+  paintXp();
+  if (after > before) {
+    S.xp.celebrated = after;
+    showLevelUp(after);
+  }
+  return true;
+}
+function noteDay(date) {
+  if (!fullDay(date)) return;
+  grant('day:' + date, 50);
+  const streak = streakCount(date);
+  if (streak >= 2) grant('streak:' + date, 15 * Math.min(streak, 10));
+}
+function paintXp() {
+  const bar = $('#xpBar'); if (!bar || !S.xp) return;
+  const st = levelState(S.xp.total);
+  const pct = st.need ? Math.max(0, Math.min(1, st.into / st.need)) : 0;
+  $('#xpLv').textContent = st.level;
+  $('#xpLabel').textContent = 'Level ' + st.level;
+  $('#xpFill').style.transform = 'scaleX(' + pct + ')';
+  $('#xpNext').textContent = (st.need - st.into) + ' to ' + (st.level + 1);
+  bar.setAttribute('aria-label', 'Level ' + st.level + ', ' + (st.need - st.into) + ' XP to level ' + (st.level + 1));
+}
+function showLevelUp(level) {
+  const el = $('#lvlUp'); if (!el) return;
+  $('#lvlNum').textContent = level;
+  el.hidden = false;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+function openXp() {
+  const st = levelState(S.xp.total);
+  const rows = [
+    ['Meal ticked', '25 XP', 'Once each. Untick and tick again does not add more.', xpBucket('meal:')],
+    ['Set done', '10 XP', 'Once for each set you tick in a workout.', xpBucket('set:')],
+    ['Workout finished', '100 XP', 'Once for each day you finish a session.', xpBucket('workout:')],
+    ['Shop item ticked', '10 XP', 'Once for each thing you mark as bought.', xpBucket('shop:')],
+    ['Full day', '50 XP', 'Every meal that day is ticked. Once.', xpBucket('day:')],
+    ['Streak', '15 × days', 'From the second full day in a row, up to 10 days. Once for that day.', xpBucket('streak:')],
+  ];
+  $('#xpBody').innerHTML = `<div class="xp-sheet-top"><div><div class="card-kicker">Progress</div><h2>Level ${st.level}</h2></div>
+    <button type="button" class="eye-x" data-xp-close>${I.x}<span>Close</span></button></div>
+    <div class="xp-sheet-bar"><i style="transform:scaleX(${st.need ? st.into / st.need : 0})"></i></div>
+    <p class="xp-nextline"><b>${st.need - st.into} XP</b> to level ${st.level + 1}. You have ${fmtInt(st.total)} XP in total.</p>
+    <p class="xp-rule">Early levels come from a meal or two. Later levels ask for more, because each step is bigger than the last.</p>
+    ${rows.map(([name, rate, why, bag]) => `<div class="xp-row"><div><b>${name}</b><span>${why}</span></div><div class="xp-row-n"><b>${rate}</b><span>${bag.n ? bag.xp + ' XP so far' : 'None yet'}</span></div></div>`).join('')}
+    <p class="xp-nextline">Next up: tick a meal, finish a set, or clear a shop item.</p>`;
+  const wrap = $('#xpSheet');
+  wrap.classList.add('open'); wrap.setAttribute('aria-hidden', 'false');
+}
+function closeXp() {
+  const wrap = $('#xpSheet'); if (!wrap) return;
+  wrap.classList.remove('open'); wrap.setAttribute('aria-hidden', 'true');
+}
 
 /* UI state (not persisted except tab) */
 const U = {
@@ -797,6 +890,7 @@ function finishSession() {
   const w = S.workouts[today()]; if (!w) return;
   w.dur = sessionMs(w); w.end = Date.now(); delete w.tick;
   w.guide = { phase: 'done', i: 0 };
+  grant('workout:' + today(), 100);
   stopRest(); save(); render(); window.scrollTo({ top: 0 });
 }
 function renderGym() {
@@ -1093,7 +1187,10 @@ views.addEventListener('click', e => {
   switch (act) {
     case 'tick': {
       e.stopPropagation();
-      const m = findMeal(U.mealsDate, mealId); m.done = !m.done; save();
+      const m = findMeal(U.mealsDate, mealId); m.done = !m.done;
+      if (m.done) grant('meal:' + U.mealsDate + ':' + m.id, 25);
+      noteDay(U.mealsDate);
+      save();
       item.classList.toggle('done', m.done);
       if (m.done) { a.classList.remove('pop'); void a.offsetWidth; a.classList.add('pop'); }
       refreshMealSummary(); break;
@@ -1119,7 +1216,9 @@ views.addEventListener('click', e => {
     }
     case 'shop-tick': {
       const row = a.closest('.srow'), list = row.dataset.list, id = row.dataset.sid, v = !isGot(list, id);
-      setGot(list, id, v); save(); row.classList.toggle('done', v);
+      setGot(list, id, v);
+      if (v) grant('shop:' + list + ':' + id, 10);
+      save(); row.classList.toggle('done', v);
       if (v) { const c = $('.check', row); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); }
       refreshShopCounts(); break;
     }
@@ -1140,6 +1239,7 @@ views.addEventListener('click', e => {
         if (U.gymDate === today() && !w.start) { w.start = Date.now(); delete w.end; delete w.dur; started = true; }
         const left = getWorkout(U.gymDate).exercises.some(x => x.sets.some(y => !y.done));
         if (left) startRest(num(ex.rest) || 180, ex.name); else stopRest();
+        grant('set:' + U.gymDate + ':' + s.id, 10);
       } else if (REST && REST.name === ex.name) stopRest();
       save();
       if (started) { render(); toast('Workout started, timer running'); break; }
@@ -1169,7 +1269,7 @@ views.addEventListener('click', e => {
     }
     case 'session-finish': {
       e.stopPropagation();
-      const w = ensureWorkout(today()); w.end = Date.now(); w.dur = w.end - w.start; stopRest();
+      const w = ensureWorkout(today()); w.end = Date.now(); w.dur = w.end - (w.start || w.end); grant('workout:' + today(), 100); stopRest();
       commit(); toast(`Workout saved, ${Math.max(1, Math.round(w.dur / 60000))} min`, { undo: () => { delete w.end; delete w.dur; commit(); } }); break;
     }
     case 'cycle': { realign(a.dataset.day); commit(); toast(`Today is ${DAYNAME[a.dataset.day]} day`); break; }
@@ -1684,6 +1784,7 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (sheet.classList.contains('open')) closeSheet();
   if ($('#eyePop').classList.contains('open')) closeEye();
+  if ($('#xpSheet').classList.contains('open')) closeXp();
 });
 
 /* ================= Meal eye overlay ================= */
@@ -1782,6 +1883,10 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', parkGym);
 paintRest();
+paintXp();
+$('#xpBar').addEventListener('click', openXp);
+$('#xpSheet').addEventListener('click', e => { if (e.target.hasAttribute('data-xp-close') || e.target.closest('[data-xp-close]')) closeXp(); });
+$('#lvlOk').addEventListener('click', () => { const el = $('#lvlUp'); el.classList.remove('show'); el.hidden = true; });
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 
 // Exposed for testing in the console
