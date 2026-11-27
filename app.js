@@ -1027,33 +1027,11 @@ function lastLine(name, date) {
   const t = topSet(lt.sets);
   return t && num(t.weight) ? `Last time: ${fmt(num(t.weight))} kg × ${num(t.reps)}` : `Last time: ${setsSummary(lt.sets)}`;
 }
-function poseSVG(id) {
-  const L = (x1, y1, x2, y2, w) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="${w || 7}" stroke-linecap="round"/>`;
-  const D = (x, y, r) => `<circle class="accent" cx="${x}" cy="${y}" r="${r || 9}"/>`;
-  const B = (x1, y1, x2, y2) => `<line class="accent" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="5" stroke-linecap="round"/>`;
-  const ground = `<path d="M16 134 H184" stroke="currentColor" stroke-opacity=".18" stroke-width="2"/>`;
-  const P = {
-    bench: ground + L(40, 88, 112, 88) + L(112, 88, 142, 74) + D(150, 70) + L(78, 88, 78, 56) + B(56, 52, 104, 52) + L(40, 88, 24, 112) + L(40, 88, 34, 120),
-    ohp: ground + L(100, 96, 100, 52) + D(100, 40) + L(100, 70, 70, 96) + L(100, 70, 130, 96) + B(62, 28, 138, 28) + L(100, 96, 78, 128) + L(100, 96, 122, 128),
-    incline: ground + L(48, 108, 118, 78) + L(118, 78, 146, 66) + D(154, 60) + L(86, 92, 70, 64) + B(58, 58, 108, 70) + L(48, 108, 36, 128),
-    raise: ground + L(100, 92, 100, 48) + D(100, 36) + L(100, 62, 48, 48) + L(100, 62, 152, 48) + D(48, 48, 5) + D(152, 48, 5) + L(100, 92, 80, 128) + L(100, 92, 120, 128),
-    pushdown: ground + L(96, 96, 96, 46) + D(96, 34) + L(96, 58, 78, 92) + L(70, 58, 78, 92) + B(64, 52, 92, 52) + L(96, 96, 78, 128) + L(96, 96, 116, 128),
-    oht: ground + L(100, 98, 100, 50) + D(100, 38) + L(100, 52, 100, 28) + D(100, 24, 6) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
-    dead: ground + L(108, 96, 108, 58) + D(108, 46) + L(108, 70, 86, 96) + B(78, 100, 132, 100) + L(108, 96, 86, 128) + L(108, 96, 128, 128),
-    pull: ground + B(70, 22, 140, 22) + L(104, 22, 104, 70) + D(104, 82) + L(104, 96, 104, 128) + L(104, 40, 86, 62) + L(104, 40, 122, 62),
-    row: ground + L(46, 96, 130, 96) + D(142, 90) + L(80, 96, 80, 70) + B(70, 66, 118, 66) + L(46, 96, 36, 120),
-    face: ground + L(100, 96, 100, 50) + D(100, 38) + L(100, 58, 62, 46) + L(100, 58, 138, 46) + B(150, 40, 168, 52) + L(100, 96, 82, 128) + L(100, 96, 118, 128),
-    curl: ground + L(100, 98, 100, 48) + D(100, 36) + L(100, 64, 78, 86) + D(74, 90, 5) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
-    hammer: ground + L(100, 98, 100, 48) + D(100, 36) + L(100, 64, 72, 88) + D(68, 92, 5) + L(100, 64, 128, 88) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
-    squat: ground + L(100, 108, 100, 62) + D(100, 50) + L(100, 78, 72, 108) + L(100, 78, 128, 108) + B(64, 40, 136, 40) + L(72, 108, 64, 128) + L(128, 108, 136, 128),
-    rdl: ground + L(108, 70, 70, 108) + D(118, 60) + L(78, 100, 96, 78) + B(60, 112, 108, 112) + L(70, 108, 58, 128),
-    legpress: ground + L(46, 110, 120, 70) + D(132, 60) + L(80, 96, 112, 78) + B(118, 70, 150, 96) + L(46, 110, 36, 128),
-    legcurl: ground + L(40, 96, 120, 96) + D(132, 90) + L(100, 96, 100, 70) + B(92, 66, 124, 66),
-    calf: ground + L(100, 120, 100, 52) + D(100, 40) + L(100, 120, 78, 132) + L(118, 120, 136, 132) + B(70, 132, 150, 132),
-    crunch: ground + L(70, 108, 120, 78) + D(132, 68) + L(90, 96, 70, 80) + B(58, 70, 86, 58),
-    stand: ground + L(100, 98, 100, 48) + D(100, 36) + L(100, 64, 74, 86) + L(100, 64, 126, 86) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
-  };
-  return `<svg class="pose" viewBox="0 0 200 150" aria-hidden="true">${P[id] || P.stand}</svg>`;
+const EX_PHOTOS = new Set(['bench', 'ohp', 'incline', 'raise', 'pushdown', 'oht', 'dead', 'pull', 'row', 'face', 'curl', 'hammer', 'squat', 'rdl', 'legpress', 'legcurl', 'calf', 'crunch', 'warm-push', 'warm-pull', 'warm-legs', 'down-push', 'down-pull', 'down-legs']);
+function exercisePhoto(key, title) {
+  if (!EX_PHOTOS.has(key)) return '';
+  const src = n => `assets/exercises/${key}-${n}.webp`;
+  return `<figure class="ex-photo"><div class="ex-shot"><img src="${src(0)}" alt="${esc(title)}, start position" width="600" height="400"><span>Start</span></div><div class="ex-shot"><img src="${src(1)}" alt="${esc(title)}, finish position" width="600" height="400"><span>Finish</span></div></figure>`;
 }
 function guideOrder(w) {
   return [{ phase: 'warmup', i: 0 }].concat((w.exercises || []).map((_, i) => ({ phase: 'work', i }))).concat([{ phase: 'down', i: 0 }]);
@@ -1152,15 +1130,16 @@ function renderGymGuide(w) {
   if (step.phase === 'warmup') {
     return `${bar}<p class="g-kicker">Warm up · ${DAYNAME[w.day]}</p><h2 class="gym-screen-title">Get ready</h2>
       <p class="g-lead">About 8 minutes. The easy sets are practice, not working sets, so they are not logged.</p>
-      ${poseSVG('stand')}
+      ${exercisePhoto({ push: 'warm-push', pull: 'warm-pull', legs: 'warm-legs' }[w.day], 'Warm up')}
       <ol class="g-steps">${(WARM[w.day] || []).map(t => `<li>${esc(t)}</li>`).join('')}</ol>
-      <p class="g-credit">Form diagrams are drawn for PEAK and stored in the app.</p>${nav}`;
+      <p class="g-credit">Photos: free-exercise-db, public domain.</p>${nav}`;
   }
   if (step.phase === 'down') {
     return `${bar}<p class="g-kicker">Cool down · ${DAYNAME[w.day]}</p><h2 class="gym-screen-title">Stretch</h2>
       <p class="g-lead">About 5 minutes. Easy range, no bouncing. Breathe out as you settle into each one.</p>
-      ${poseSVG('stand')}
-      <ol class="g-steps">${(DOWN[w.day] || []).map(([h, t]) => `<li><b>${esc(h)}.</b> ${esc(t)}</li>`).join('')}</ol>${nav}`;
+      ${exercisePhoto({ push: 'down-push', pull: 'down-pull', legs: 'down-legs' }[w.day], 'Stretch')}
+      <ol class="g-steps">${(DOWN[w.day] || []).map(([h, t]) => `<li><b>${esc(h)}.</b> ${esc(t)}</li>`).join('')}</ol>
+      <p class="g-credit">Photos: free-exercise-db, public domain.</p>${nav}`;
   }
   const e = w.exercises[step.i], c = coachOf(e) || { name: e.name, muscles: 'Your lift', repText: (e.sets[0] && e.sets[0].target) || '', rest: e.rest, pose: 'stand', how: ['Set up so you can repeat the same position every rep.', 'Move through a range you can control.', 'Breathe out on the effort and in as the weight comes back.'], cues: ['Same setup every set.', 'Control the lowering.'], mistakes: ['Bouncing the weight.', 'Holding one breath for the whole set.'], easier: 'Use less weight.', harder: 'Slow the lowering to three seconds.' };
   const pres = c.repText ? `${c.sets || e.sets.length} × ${c.repText}` : `${e.sets.length} sets`;
@@ -1172,13 +1151,13 @@ function renderGymGuide(w) {
     <p class="g-muscles">${esc(c.muscles)}</p>
     <div class="g-pres"><b>${esc(pres)}</b><span>${esc(restLabel(num(e.rest) || c.rest || 90))}</span></div>
     <p class="g-last">${esc(lastLine(e.name, today()))}</p>
-    ${poseSVG(c.pose)}
+    ${exercisePhoto(c.pose, e.name)}
     ${blockList('How to do it', c.how, 'g-steps')}
     ${blockList('Form cues', c.cues, 'g-cues')}
     ${blockList('Avoid', c.mistakes, 'g-bad')}
     <section class="g-block g-swap"><h3>Easier / harder</h3><p><b>Easier.</b> ${esc(c.easier)}</p><p><b>Harder.</b> ${esc(c.harder)}</p></section>
     <section class="g-block"><h3>Log the sets</h3><p class="g-lead">Tick a set and the rest timer starts. Weight and reps are saved for next time.</p>${sets}</section>
-    <p class="g-credit">Form diagrams are drawn for PEAK and stored in the app.</p>${nav}`;
+    <p class="g-credit">Photos: free-exercise-db, public domain.</p>${nav}`;
 }
 function renderGymSummary(w) {
   const sets = w.exercises.reduce((a, e) => a + e.sets.filter(loggedSet).length, 0);
