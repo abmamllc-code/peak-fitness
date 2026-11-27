@@ -449,6 +449,44 @@ body.resting .views{padding-bottom:calc(var(--tabbar-h) + var(--sab) + 104px)}
 .guide-steps p{margin:2px 0 0;font-size:13.5px;color:var(--text-muted);line-height:1.45}
 .guide-safety{margin-top:16px;padding:12px 14px;border-radius:16px;background:var(--gold-soft)}
 .guide-safety b{display:block;font-size:13px;font-weight:600;color:var(--gold);margin-bottom:6px}
+
+/* ---------- Guided gym ---------- */
+.gym-land{display:flex;flex-direction:column;gap:14px}
+.gym-resume{height:48px;border-radius:14px;background:var(--gold);color:var(--on-gold);font-weight:800;letter-spacing:.04em}
+.gym-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-height:228px;padding:22px 20px 18px;border-radius:22px;background:var(--bg-elev);border:1px solid var(--line);box-shadow:0 16px 36px var(--shadow-color)}
+.gym-card.is-live{border-color:color-mix(in srgb,var(--gold) 55%,var(--line))}
+.gym-kicker{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.gym-card h2{font-size:48px;font-weight:800;letter-spacing:-.045em;line-height:.88;margin:0}
+.gym-muscles{margin:0;font-size:16px;font-weight:600;color:var(--text)}
+.gym-line{margin:0;color:var(--text-muted);font-size:14px}
+.gym-meta{display:flex;gap:14px;color:var(--text-faint);font-size:13px;font-weight:700;letter-spacing:.02em}
+.gym-start{width:100%;height:54px;margin-top:auto;font-size:16px;font-weight:800;letter-spacing:.12em}
+.gym-screen-title{font-size:32px;font-weight:800;letter-spacing:-.04em;line-height:1;margin:6px 0 8px}
+.gym-screen-sub,.g-lead,.g-muscles,.g-last,.g-credit{color:var(--text-muted);font-size:14px}
+.g-kicker{margin:8px 0 0;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.g-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.g-count{font-size:13px;font-weight:700;color:var(--text-faint)}
+.g-bar{height:8px;border-radius:999px;background:var(--bg-hover);overflow:hidden;margin:12px 0 16px}
+.g-bar i{display:block;height:100%;background:var(--gold);border-radius:inherit}
+.g-pres{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0}
+.g-pres b{font-size:22px;font-weight:800;letter-spacing:-.03em}
+.g-last{margin:0 0 12px;font-weight:700;color:var(--text)}
+.pose{width:100%;height:168px;display:block;background:var(--bg-elev);border:1px solid var(--line);border-radius:18px;color:var(--text)}
+.pose .accent{stroke:var(--gold);fill:var(--gold)}
+.g-block{margin:16px 0}
+.g-block h3{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
+.g-steps,.g-cues,.g-bad{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.g-steps li,.g-cues li,.g-bad li{padding-left:4px}
+.g-bad li{color:var(--text-muted)}
+.g-swap p{margin:0 0 8px}
+.guide-sets .set{grid-template-columns:52px 1fr 18px 1fr}
+.guide-sets .set-check{width:52px;height:52px;font-size:16px}
+.guide-sets .field{height:52px;font-size:18px;font-weight:700}
+.g-nav{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;position:sticky;bottom:8px;padding-top:12px}
+.g-nav .pill{height:52px;font-weight:800}
+.gym-back{margin-bottom:12px}
+body.guiding .restbar{height:64px}
+body.guiding .rest-t{font-size:26px;font-weight:800}
 .guide-safety ul{margin:0;padding:0 0 0 16px;font-size:13px;color:var(--text-muted);line-height:1.45}
 .guide-safety li+li{margin-top:6px}
 .guide-credit{margin-top:12px}
