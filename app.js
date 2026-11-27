@@ -1118,14 +1118,13 @@ function applyTheme(t, animate) {
   const html = document.documentElement;
   if (animate && !reduceMotion()) { html.classList.add('theme-fade'); getComputedStyle(html).getPropertyValue('--bg'); }
   html.setAttribute('data-theme', t);
-  const mt = $('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', t === 'light' ? '#e7f3fc' : '#0b1526');
+  const mt = $('meta[name="theme-color"]'); if (mt) mt.setAttribute('content', t === 'light' ? '#ffffff' : '#000000');
   if (animate) { clearTimeout(applyTheme._t); applyTheme._t = setTimeout(() => html.classList.remove('theme-fade'), 340); }
 }
 $('#themeBtn').addEventListener('click', () => {
   const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
   localStorage.setItem('peakfit.theme', t); applyTheme(t, true);
 });
-if (window.matchMedia) matchMedia('(prefers-color-scheme: light)').addEventListener('change', e => { if (!localStorage.getItem('peakfit.theme')) applyTheme(e.matches ? 'light' : 'dark', true); });
 
 /* ================= Toast ================= */
 let toastT;
