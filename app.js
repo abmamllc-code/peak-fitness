@@ -44,6 +44,7 @@ const I = {
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   scale: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9.5a4 4 0 0 1 6 0l-2 2.5"/></svg>',
   bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.2 11.1c.5.4.9 1 .9 1.6V17h4.6v-1.3c0-.6.4-1.2.9-1.6A6 6 0 0 0 12 3z"/></svg>',
+  eye: '<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
 };
 
 /* ================= Store ================= */
@@ -422,6 +423,8 @@ const MEAL_GUIDES = {
     safety: [
       'Reheat on Recrisp until piping hot. Don’t refreeze.',
     ],
+    ings: [['Chicken thighs, boneless and skinless', '200g', '800g'], ['Potatoes', '550g', '2.2kg'], ['Olive oil', '10g', '40g'], ['Smoked paprika, salt, garlic powder, onion powder, mixed herbs, rosemary', 'In the bowl', 'Same bowl']],
+    boxAt: [3],
   },
   snack: {
     photo: 'assets/meals/snack-yogurt.jpg', alt: 'Yogurt topped with green grapes and blueberries',
@@ -441,6 +444,8 @@ const MEAL_GUIDES = {
       'Don’t refreeze thawed berries.',
       'This one is eaten cold. There is nothing to reheat.',
     ],
+    ings: [['Full-fat Greek yogurt', '250g', '1,750g, 7 pots'], ['Honey', '20g', '140g'], ['Berries', '100g when you eat', '100g a day'], ['Grapes', '150g when you eat', '150g a day']],
+    boxAt: [0, 1],
   },
   pre: {
     photo: 'assets/meals/bananas-dates.jpg', alt: 'Bananas beside a bowl of dates',
@@ -459,6 +464,8 @@ const MEAL_GUIDES = {
       'Throw away a banana that is leaking or smells fermented.',
       'Keep dates in a sealed tub so they stay soft rather than drying out.',
     ],
+    ings: [['Bananas', '2', '2, no batch'], ['Medjool dates', '3', '3, no batch']],
+    boxAt: [3],
   },
   post: {
     photo: 'assets/meals/potatoes.jpg', alt: 'Seasoned potato chunks from an air fryer',
@@ -474,6 +481,8 @@ const MEAL_GUIDES = {
       'Don’t refreeze potatoes you have thawed and air-fried.',
       'Eat this straight after the gym, while it is still the post-training meal.',
     ],
+    ings: [['Potatoes', '320g', '960g, 3 portions']],
+    boxAt: [],
   },
   dinner: {
     photo: 'assets/meals/dinner-mince.jpg', alt: 'White rice with beef mince and a fried egg',
@@ -491,6 +500,8 @@ const MEAL_GUIDES = {
       'Reheat until piping hot. Don’t refreeze.',
       'Use defrosted mince. Fry the eggs fresh.',
     ],
+    ings: [['Rice, dry', '150g, 1 rice-cooker cup', '600g, 4 rice-cooker cups'], ['Beef mince, 10%, defrosted', '150g', '600g'], ['Butter or oil', '20g', '80g'], ['Eggs, fried fresh', '2', 'Not in the boxes'], ['Salt, pepper, garlic powder, onion powder, smoked paprika, optional herbs and soy', 'In the bowl', 'The amounts are in the cook steps']],
+    boxAt: [2],
   },
 };
 const mealGuide = m => (m && m.tag && MEAL_GUIDES[m.tag]) || null;
@@ -502,9 +513,9 @@ function modeSeg() {
     <button class="${i ? '' : 'on'}" data-act="meal-mode" data-m="today">Today</button><button class="${i ? 'on' : ''}" data-act="meal-mode" data-m="shop">Shopping</button></div>`;
 }
 function renderMeals() {
-  if (U.mealsMode === 'shop') return renderShop();
   const date = U.mealsDate, meals = getMeals(date);
   const rows = meals.map(m => `<div class="item${m.done ? ' done' : ''}${isOpen(m.id)}" data-meal="${m.id}">${mealHead(m)}
+      <button type="button" class="eye-btn" data-act="eye" aria-label="Open ${esc(m.name)}">${I.eye}<span>Eye</span></button>
       <div class="expand"><div class="expand-in"><div class="expand-body">
         ${mealExtra(m)}
         <div class="form-grid">
@@ -518,7 +529,7 @@ function renderMeals() {
         <div class="actions"><button class="pill pill-sm pill-danger" data-act="del-meal">Remove meal</button><button class="pill pill-sm pill-ghost" data-act="collapse">Done</button></div>
       </div></div></div></div>`).join('');
   const same = matchesPlan(date);
-  $('#view-meals').innerHTML = `${modeSeg()}${dayswitch('meals', date, true)}
+  $('#view-meals').innerHTML = `${dayswitch('meals', date, true)}
     ${hintSlot('meals')}
     <div class="panel sumcard${U.sumOpen ? ' open' : ''}" id="mealSummary"><div class="summary" data-act="sum">${mealSummaryInner(date)}</div>
       <div class="expand"><div class="expand-in"><div class="macro-detail">${macroDetail(date)}</div></div></div></div>
@@ -542,8 +553,7 @@ function mealExtra(m) {
   const g = mealGuide(m); if (!g) return '';
   return `<figure class="meal-fig"><img class="meal-photo" src="${g.photo}" alt="${esc(g.alt)}" width="960" height="720">
     <figcaption class="meal-credit">${esc(g.credit)} · ${esc(g.licence)}</figcaption></figure>
-    <div class="meal-tools"><div class="meal-port"><b>${esc(g.portions)}</b><span>${esc(g.batch)}</span></div>
-    <button type="button" class="bulb" data-act="guide" data-tag="${esc(m.tag)}" aria-label="Recipe guide for ${esc(m.name)}">${I.bulb}<span>Recipe</span></button></div>`;
+    <div class="meal-tools"><div class="meal-port"><b>${esc(g.portions)}</b><span>${esc(g.batch)}</span></div></div>`;
 }
 const goalKcal = t => num(S.targets.kcal) || t.planned;
 function mealSummaryInner(date) {
@@ -600,6 +610,23 @@ const SHOP_WHERE = [
   '<b>Veg market</b> for bananas, grapes and potatoes — usually cheaper than the supermarket.',
 ];
 const SHOP_PREP = ['Portion the meat for the month and freeze it: 200g chicken, 150g mince.', 'Defrost the mince (and the chicken) in the fridge before you cook.', 'Keep potatoes in a cool, dark cupboard away from onions.', 'Rice goes in the rice cooker. Cool it within an hour: 1 box in the fridge, freeze the rest. Cooked rice shouldn’t sit in the fridge more than a day.'];
+const SHOP_DO = {
+  chicken: ['A 1kg pack is five 200g portions. One cook is 800g, four portions.', 'From the pack, bag 800g for the cook you are doing now, or for the next cook.', 'Bag the leftover 200g on its own, raw, and freeze it. Four of those leftover bags are another cook.', 'The night before a cook, move one 800g bag into the fridge. Don’t cook it from frozen.'],
+  mince: ['A cook is 600g, four portions of 150g. Defrost that 600g in the fridge before it goes in the air fryer.', 'A 500g pack is 50g short of four portions. Weigh 150g bags and top a short bag up from the next pack, so every bag is 150g.', 'Freeze the bags raw. A cook is four bags.'],
+  berries: ['Leave the bags in the freezer. The snack takes 100g when you eat it.', 'If you thaw a handful, eat it. Don’t put it back in the freezer.'],
+  rice: ['Keep the bag sealed. Dinner is the only meal that uses it.', 'A cook is 4 rice-cooker cups, about 600g. That is four plates of 150g.', 'Rinse 2–3 times, water to the 4 line, pinch of salt. When it switches to warm, rest 10 minutes.', 'Cool it within an hour. 1 box in the fridge, freeze 3. Don’t leave cooked rice in the fridge more than a day.'],
+  dates: ['Sealed tub in the cupboard. 3 dates with the 2 bananas, 30–60 minutes before the gym.', 'The bag is about 90 dates, a month of this meal.'],
+  honey: ['Cupboard. On shop day, stir 20g into each of the 7 yogurt pots.', 'Seven pots use 140g. The jars cover the month.'],
+  oil: ['A chicken cook uses 40g in the glass bowl, with the paprika, salt, garlic powder, onion powder, mixed herbs and rosemary.', 'That is 10g on each plate.'],
+  seasoning: ['Chicken bowl: smoked paprika, salt, garlic powder, onion powder, mixed herbs and rosemary, with the 40g olive oil. No extra seasoning on the potatoes.', 'Mince bowl, for the 600g: 1 tsp salt, ½ tsp pepper, 1 tsp garlic powder, 1 tsp onion powder, 1–2 tsp smoked paprika. Mixed herbs if you want them.'],
+  soy: ['Optional splash in the mince bowl. Fridge after you open it.'],
+  butter: ['A dinner cook uses 80g, stirred into the mince after you pour the fat off.', 'That is 20g a plate. Fry the 2 eggs fresh, without adding to that 80g.'],
+  bananas: ['Leave them out. 2 a day, with 3 dates, 30–60 minutes before the gym.', 'A week is 14–15. If a bunch ripens too fast, the fridge slows it for a couple of days. Don’t freeze them for this meal.'],
+  grapes: ['Keep them whole in the fridge. 150g goes in the yogurt bowl when you eat it.', 'A week is about 1.1kg. Don’t freeze them.'],
+  yogurt: ['On shop day, set out 7 pots. 250g yogurt and 20g honey in each. Lid on, straight in the fridge.', 'Seven pots use 1,750g, so one 1kg tub is spare. Add the fruit when you eat. Don’t freeze the pots.'],
+  eggs: ['Fridge. 2 eggs fried fresh on each dinner, after the mince and rice are hot.', 'They don’t go in the freezer boxes. A tray of 15 is a week, plus one spare.'],
+  potatoes: ['Cool, dark cupboard, away from onions. A week is 6kg.', 'Chicken and potatoes: a cook is 2.2kg, four portions of 550g. Weigh that out for the cook. The rest stays in the cupboard.', 'Post-gym is separate: 320g a day, air fried on its own. It is not the potatoes in the chicken boxes. Three of those is 960g.'],
+};
 const weekStart = d => addDays(d, -mod(parseISO(d).getDay() - 1, 7)); // Monday
 function shopSync() { const ws = weekStart(today()); if (S.shop.weekOf !== ws) { S.shop.week = {}; S.shop.weekOf = ws; save(); } }
 const monthItems = () => SHOP.month.flatMap(g => g.items);
@@ -619,13 +646,20 @@ function shopStores(id) { return (SHOP_AT[id] || []).map(k => SHOP_STORES.find(s
 function shopRow(list, id, name, qty, del) {
   const tags = shopStores(id);
   const at = tags.length ? `<div class="shop-at">${tags.map(s => `<span>${esc(s.name)}</span>`).join('')}</div>` : '';
+  const prep = SHOP_DO[id];
   return `<div class="srow${isGot(list, id) ? ' done' : ''}" data-list="${list}" data-sid="${esc(id)}">
     <button class="check" data-act="shop-tick" aria-label="Tick ${esc(name)}">${I.check}</button>
-    <div class="item-main" data-act="shop-tick"><div class="item-title">${esc(name)}</div>${at}</div>
-    ${qty ? `<div class="item-val">${esc(qty)}</div>` : ''}${del ? `<button class="del" data-act="shop-del" aria-label="Remove ${esc(name)}">${I.x}</button>` : ''}</div>`;
+    <div class="shop-copy">
+      <div class="item-title">${esc(name)}</div>
+      ${qty ? `<div class="shop-qty">${esc(qty)}</div>` : ''}
+      ${at}
+      ${prep ? `<div class="shop-do">${prep.map(p => `<p>${esc(p)}</p>`).join('')}</div>` : ''}
+    </div>
+    ${del ? `<button class="del" data-act="shop-del" aria-label="Remove ${esc(name)}">${I.x}</button>` : ''}</div>`;
 }
 function renderShop() {
   shopSync();
+  if (!U.shopShown) { U.open.add('shop-month'); U.open.add('shop-week'); U.shopShown = true; }
   const filt = U.shopFilter || 'all';
   const shown = id => filt === 'all' || (SHOP_AT[id] || []).includes(filt);
   const m = shopCount('month'), w = shopCount('week'), x = shopCount('extras');
@@ -649,7 +683,7 @@ function renderShop() {
     <div class="expand"><div class="expand-in"><div class="expand-body"><ul class="tips">${list.map(t => `<li>${t}</li>`).join('')}</ul></div></div></div></div>`;
   const filtBar = `<div class="shop-filt" role="tablist" aria-label="Filter by store">${[{ id: 'all', name: 'All' }, ...SHOP_STORES].map(s =>
     `<button class="chip${filt === s.id ? ' on' : ''}" data-act="shop-filter" data-store="${s.id}">${esc(s.name)}</button>`).join('')}</div>`;
-  $('#view-meals').innerHTML = `${modeSeg()}
+  $('#view-shop').innerHTML = `
     <div class="panel shop-sum"><div class="grow"><div class="card-kicker">30 days · Lean bulk, phase 1</div>
       <div class="sum-cals"><span data-count="all-got" style="color:inherit;font-size:inherit">${all}</span> <span>of <span data-count="all-n" style="font-size:inherit">${total}</span> in the trolley</span></div></div>
       <div class="shop-bar"><i data-count="bar" style="transform:scaleX(${total ? all / total : 0})"></i></div></div>
@@ -1031,7 +1065,10 @@ function renderProgress() {
 
 function render() {
   if (U.tab !== 'gym') document.body.classList.remove('guiding');
-  if (U.tab === 'meals') renderMeals(); else if (U.tab === 'gym') renderGym(); else renderProgress();
+  if (U.tab === 'meals') renderMeals();
+  else if (U.tab === 'shop') renderShop();
+  else if (U.tab === 'gym') renderGym();
+  else renderProgress();
 }
 
 /* ================= Interactions ================= */
@@ -1069,23 +1106,16 @@ views.addEventListener('click', e => {
       break;
     }
     case 'collapse': item.classList.remove('open'); U.open.delete(mealId || exId); break;
-    case 'guide': {
+    case 'eye': {
       e.stopPropagation();
-      const gm = mealId && findMeal(U.mealsDate, mealId);
-      openGuide(a.dataset.tag, gm && gm.name); break;
+      const id = a.closest('[data-meal]') && a.closest('[data-meal]').dataset.meal;
+      if (id) openEye(id); break;
     }
     case 'sum': { const box = $('#mealSummary'); U.sumOpen = !U.sumOpen; box.classList.toggle('open', U.sumOpen); break; }
-    case 'meal-mode': {
-      const m = a.dataset.m === 'shop' ? 'shop' : 'meals'; if (m === U.mealsMode) break;
-      U.mealsMode = m; localStorage.setItem('peakfit.mealsMode', m);
-      $('#mealSeg .seg-ind').style.transform = `translateX(calc(${m === 'shop' ? 1 : 0} * (100% + 4px)))`;
-      $$('#mealSeg button').forEach(b => b.classList.toggle('on', b === a));
-      setTimeout(() => { renderMeals(); const v = $('#view-meals'); v.style.animation = 'none'; void v.offsetWidth; v.style.animation = ''; }, 140); break;
-    }
     case 'nudge': dismissHint(a.dataset.id); break;
     case 'shop-filter': {
       const store = a.dataset.store || 'all'; if (store === U.shopFilter) break;
-      U.shopFilter = store; renderMeals(); break;
+      U.shopFilter = store; render(); break;
     }
     case 'shop-tick': {
       const row = a.closest('.srow'), list = row.dataset.list, id = row.dataset.sid, v = !isGot(list, id);
@@ -1285,7 +1315,8 @@ function computeHints(at) {
   return out.filter(h => !off.includes(h.id));
 }
 function hintsFor(tab) {
-  if (tab === 'meals' && (U.mealsMode === 'shop' || U.mealsDate !== today())) return [];
+  if (tab === 'shop') return [];
+  if (tab === 'meals' && U.mealsDate !== today()) return [];
   if (tab === 'gym' && (U.gymDate !== today() || U.tplEdit)) return [];
   return computeHints().filter(h => h.tabs.includes(tab));
 }
@@ -1369,9 +1400,9 @@ function importData() {
 }
 
 /* ================= Tabs ================= */
-const TABS = ['meals', 'gym', 'progress'];
+const TABS = ['meals', 'shop', 'gym', 'progress'];
 function setTab(tab, initial) {
-  closeGuide();
+  closeEye();
   U.tab = tab; localStorage.setItem('peakfit.tab', tab);
   $$('.tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === tab));
   $('#tabInd').style.transform = `translateX(${TABS.indexOf(tab) * 100}%)`;
@@ -1472,12 +1503,12 @@ function tickTarget(q, date) {
   const explicit = /\b(shopping|list|trolley|basket)\b/.test(q);
   const q2 = q.replace(/\b(?:from|on|off|in|to)?\s*(?:the |my )?(?:shopping list|shopping|list|trolley|basket)\b/g, ' ').replace(/\s+/g, ' ').trim();
   const meal = bestMatchScore(q2, getMeals(date), x => x.name), shop = bestMatchScore(q2, allShopItems(), shopName);
-  const onList = U.tab === 'meals' && U.mealsMode === 'shop';
+  const onList = U.tab === 'shop';
   if (shop.x && shop.score >= 0.5 && (explicit || onList || !meal.x || meal.score < 0.5 || shop.score > meal.score + 0.05)) return { kind: 'shop', x: shop.x };
   if (meal.x && meal.score >= 0.5) return { kind: 'meal', x: meal.x };
   return { kind: null, q: q2 };
 }
-function shopResult(it, v) { setGot(it.list, it.id, v); U.mealsMode = 'shop'; localStorage.setItem('peakfit.mealsMode', 'shop'); U.open.add('shop-' + it.list); return { msg: `${v ? 'Ticked off' : 'Unticked'} ${it.name}`, tab: 'meals' }; }
+function shopResult(it, v) { setGot(it.list, it.id, v); U.open.add('shop-' + it.list); return { msg: `${v ? 'Ticked off' : 'Unticked'} ${it.name}`, tab: 'shop' }; }
 const KNOWN_MEAS = ['chest', 'arms', 'arm', 'bicep', 'biceps', 'waist', 'hips', 'hip', 'thigh', 'thighs', 'neck', 'shoulders', 'shoulder', 'calves', 'calf', 'forearm', 'forearms', 'body fat', 'bodyfat', 'glutes', 'stomach', 'belly'];
 const NUM = '(\\d+(?:\\.\\d+)?)';
 const cleanExName = s => s.replace(/\b(i|just|did|done|have|log|logged|add|added|record|recorded|today|set|for|on|of|with|at|do|and|then|my|some|exercise)\b/g, ' ').replace(/\s+/g, ' ').trim();
@@ -1492,7 +1523,7 @@ function interpret(raw) {
 
   // Shopping: "add to shopping oats", "add oats to my shopping list", "shopping list add oats"
   if ((m = s.match(/^(?:add|put|stick|need)\s+(?:to|on|onto|in)\s+(?:the\s+|my\s+)?(?:shopping(?:\s+list)?|list)\s+(.+)$/) || s.match(/^(?:add|put|stick)\s+(.+?)\s+(?:to|on|onto|in)\s+(?:the\s+|my\s+)?(?:shopping(?:\s+list)?|list|trolley|basket)$/) || s.match(/^shopping(?:\s+list)?\s+(?:add\s+)?(.+)$/))) {
-    const msg = addShopItem(m[1]); U.mealsMode = 'shop'; localStorage.setItem('peakfit.mealsMode', 'shop'); U.open.add('shop-extras'); return { msg, tab: 'meals' };
+    const msg = addShopItem(m[1]); U.open.add('shop-extras'); return { msg, tab: 'shop' };
   }
   // Shopping: "got the rice", "bought bananas"
   if ((m = s.match(/^(?:i\s+)?(?:have\s+)?(?:got|bought|picked up|grabbed)\s+(?:the\s+|some\s+)?(.+)$/))) {
@@ -1592,7 +1623,7 @@ function interpret(raw) {
   }
 
   // Bare meal name: "breakfast"
-  if (U.tab === 'meals' && U.mealsMode === 'shop') { const it = bestMatch(s, allShopItems(), shopName, 0.8); if (it) return shopResult(it, !isGot(it.list, it.id)); }
+  if (U.tab === 'shop') { const it = bestMatch(s, allShopItems(), shopName, 0.8); if (it) return shopResult(it, !isGot(it.list, it.id)); }
   const bare = bestMatch(s, getMeals(today()), x => x.name, 0.8);
   if (bare) { findMeal(today(), bare.id).done = true; U.mealsDate = today(); return { msg: `Ticked off ${bare.name}`, tab: 'meals' }; }
   return null;
@@ -1652,30 +1683,90 @@ $('#voiceForm').addEventListener('submit', e => { e.preventDefault(); stopListen
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (sheet.classList.contains('open')) closeSheet();
-  if ($('#guideSheet').classList.contains('open')) closeGuide();
+  if ($('#eyePop').classList.contains('open')) closeEye();
 });
 
-/* ================= Recipe guide ================= */
-function openGuide(tag, name) {
-  const g = MEAL_GUIDES[tag]; if (!g) return;
-  const title = name || (S.plan.find(m => m.tag === tag) || {}).name || g.alt;
-  $('#guideBody').innerHTML = `<div class="guide-top"><div><div class="card-kicker">Recipe</div><h2 id="guideTitle">${esc(title)}</h2></div>
-    <button class="icon-btn" type="button" data-close aria-label="Close recipe">${I.x}</button></div>
-    <img class="meal-photo guide-photo" src="${g.photo}" alt="${esc(g.alt)}">
-    <div class="meal-port guide-port"><b>${esc(g.portions)}</b><span>${esc(g.batch)}</span></div>
-    <p class="guide-why">${esc(g.why)}</p>
-    <ol class="guide-steps">${g.steps.map(([t, d], i) => `<li><span class="guide-n">${i + 1}</span><div><b>${esc(t)}</b><p>${esc(d)}</p></div></li>`).join('')}</ol>
-    <div class="guide-safety"><b>Food safety</b><ul>${g.safety.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>
-    <p class="guide-credit">Photo: ${esc(g.credit)} · ${esc(g.licence)}</p>`;
-  const wrap = $('#guideSheet');
-  wrap.classList.add('open'); wrap.setAttribute('aria-hidden', 'false');
-  $('#guideBody').scrollTop = 0;
+/* ================= Meal eye overlay ================= */
+let eyeFrom = null, eyeDrag = null;
+function eyeSteps(g, which) {
+  const at = g.boxAt || [];
+  return g.steps.filter((_, i) => which === 'box' ? at.includes(i) : !at.includes(i));
 }
-function closeGuide() {
-  const wrap = $('#guideSheet'); if (!wrap) return;
-  wrap.classList.remove('open'); wrap.setAttribute('aria-hidden', 'true');
+function openEye(id) {
+  const meal = findMeal(U.mealsDate, id); if (!meal) return;
+  const g = mealGuide(meal);
+  const card = document.querySelector(`[data-meal="${id}"]`);
+  const pop = $('#eyePop'), panel = $('#eyeCard');
+  const cook = g ? eyeSteps(g, 'cook') : [];
+  const boxes = g ? eyeSteps(g, 'box') : [];
+  const keep = g && !(g.boxAt || []).length ? g.safety : [];
+  panel.innerHTML = `<div class="eye-bar"><div class="card-kicker">Meal</div><button type="button" class="eye-x" data-eye-close>${I.x}<span>Close</span></button></div>
+    <div class="eye-scroll" id="eyeScroll">
+      ${g ? `<img class="meal-photo" src="${g.photo}" alt="${esc(g.alt)}">` : ''}
+      <h2 id="eyeTitle">${esc(meal.name)}</h2>
+      ${g ? `<p class="g-lead">${esc(g.why)}</p>` : `<p class="g-lead">${esc(meal.items || 'No cook guide for this one.')}</p>`}
+      ${g ? `<section class="g-block"><h3>Ingredients</h3>
+        <div class="ing-table"><div class="ing-h"><span>Item</span><span>One portion</span><span>One cook</span></div>
+        ${g.ings.map(([n, a, b]) => `<div class="ing-r"><span>${esc(n)}</span><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div></section>
+        <section class="g-block"><h3>How to cook it</h3><ol class="g-steps">${cook.map(([t, d]) => `<li><b>${esc(t)}.</b> ${esc(d)}</li>`).join('') || '<li>Nothing to cook.</li>'}</ol></section>
+        <section class="g-block"><h3>Boxes</h3><ol class="g-steps">${boxes.map(([t, d]) => `<li><b>${esc(t)}.</b> ${esc(d)}</li>`).join('') || keep.map(s => `<li>${esc(s)}</li>`).join('') || '<li>Nothing to box up.</li>'}</ol></section>
+        ${g.safety && (g.boxAt || []).length ? `<div class="guide-safety"><b>Food safety</b><ul>${g.safety.map(s => `<li>${esc(s)}</li>`).join('')}</ul></div>` : ''}
+        <p class="g-credit">Photo: ${esc(g.credit)} · ${esc(g.licence)}</p>` : ''}
+    </div>`;
+  const r = card ? card.getBoundingClientRect() : { top: 120, left: 16, width: 300, height: 88 };
+  eyeFrom = r;
+  pop.hidden = false;
+  panel.style.transition = 'none';
+  panel.style.transform = 'none';
+  panel.style.top = r.top + 'px';
+  panel.style.left = r.left + 'px';
+  panel.style.width = r.width + 'px';
+  panel.style.height = Math.max(72, Math.min(r.height, 140)) + 'px';
+  panel.style.opacity = '0.55';
+  pop.classList.add('open');
+  const go = () => {
+    const wide = Math.min(window.innerWidth - 24, 496);
+    panel.style.transition = '';
+    panel.style.top = '8vh';
+    panel.style.left = ((window.innerWidth - wide) / 2) + 'px';
+    panel.style.width = wide + 'px';
+    panel.style.height = '80vh';
+    panel.style.opacity = '1';
+  };
+  if (reduceMotion()) go();
+  else requestAnimationFrame(() => requestAnimationFrame(go));
+  const sc = $('#eyeScroll'); if (sc) sc.scrollTop = 0;
 }
-$('#guideSheet').addEventListener('click', e => { if (e.target.hasAttribute('data-close') || e.target.closest('[data-close]')) closeGuide(); });
+function closeEye() {
+  const pop = $('#eyePop'), panel = $('#eyeCard');
+  if (!pop || !pop.classList.contains('open')) return;
+  const done = () => { pop.classList.remove('open'); pop.hidden = true; panel.style.transform = 'none'; };
+  if (!eyeFrom || reduceMotion()) { done(); return; }
+  panel.style.top = eyeFrom.top + 'px';
+  panel.style.left = eyeFrom.left + 'px';
+  panel.style.width = eyeFrom.width + 'px';
+  panel.style.height = Math.max(72, Math.min(eyeFrom.height, 140)) + 'px';
+  panel.style.opacity = '0';
+  setTimeout(done, 320);
+}
+$('#eyePop').addEventListener('click', e => { if (e.target.hasAttribute('data-eye-close') || e.target.closest('[data-eye-close]')) closeEye(); });
+$('#eyeCard').addEventListener('pointerdown', e => {
+  if (e.target.closest('button, a, input, textarea')) return;
+  eyeDrag = { y: e.clientY, pointer: e.pointerId };
+});
+$('#eyeCard').addEventListener('pointermove', e => {
+  if (!eyeDrag || e.pointerId !== eyeDrag.pointer) return;
+  const dy = Math.max(0, e.clientY - eyeDrag.y);
+  $('#eyeCard').style.transform = `translateY(${dy}px)`;
+});
+$('#eyeCard').addEventListener('pointerup', e => {
+  if (!eyeDrag || e.pointerId !== eyeDrag.pointer) return;
+  const dy = e.clientY - eyeDrag.y;
+  eyeDrag = null;
+  if (dy > 90) closeEye();
+  else $('#eyeCard').style.transform = '';
+});
+$('#eyeCard').addEventListener('pointercancel', () => { eyeDrag = null; const c = $('#eyeCard'); if (c) c.style.transform = ''; });
 
 /* ================= Boot ================= */
 bindChartScrub(views);

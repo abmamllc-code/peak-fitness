@@ -36,6 +36,7 @@
 
   <main class="views" id="views">
     <section class="view" id="view-meals" data-view="meals"></section>
+    <section class="view" id="view-shop" data-view="shop" hidden></section>
     <section class="view" id="view-gym" data-view="gym" hidden></section>
     <section class="view" id="view-progress" data-view="progress" hidden></section>
   </main>
@@ -44,7 +45,10 @@
     <div class="tabs">
       <span class="tab-ind" id="tabInd"></span>
       <button class="tab is-active" data-tab="meals">
-        <svg viewBox="0 0 24 24"><path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 21V3c-2 1-3 3.5-3 7s1 4 3 4"/></svg><span>Meals</span>
+        <svg viewBox="0 0 24 24"><path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 21V3c-2 1-3 3.5-3 7s1 4 3 4"/></svg><span>Food</span>
+      </button>
+      <button class="tab" data-tab="shop">
+        <svg viewBox="0 0 24 24"><path d="M6 8h12l-1.2 12H7.2L6 8zM9 8V6.5A3 3 0 0 1 15 6.5V8"/></svg><span>Shop</span>
       </button>
       <button class="tab" data-tab="gym">
         <svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg><span>Gym</span>
@@ -92,12 +96,9 @@
   </div>
 </div>
 
-<div class="sheet-wrap" id="guideSheet" aria-hidden="true">
-  <div class="sheet-scrim" data-close></div>
-  <div class="sheet sheet-guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
-    <div class="sheet-grip"></div>
-    <div class="guide-scroll" id="guideBody"></div>
-  </div>
+<div class="eye-pop" id="eyePop" hidden>
+  <div class="eye-scrim" data-eye-close></div>
+  <div class="eye-card" id="eyeCard" role="dialog" aria-modal="true" aria-labelledby="eyeTitle"></div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
