@@ -837,7 +837,7 @@ function mealHead(m) {
   return `<div class="item-head" data-act="toggle">
     <button class="check" data-act="tick" aria-label="Tick off ${esc(m.name)}">${I.check}</button>
     <div class="item-main meal-main">${thumb}<div class="item-copy"><div class="item-title">${esc(m.name || 'Untitled meal')}</div>${sub ? `<div class="item-sub">${sub}</div>` : ''}</div></div>
-    <div class="item-val">${num(m.cals) ? fmtInt(num(m.cals)) + ' kcal' : '<span class="faint">Set kcal</span>'}</div>${I.chev}
+    <div class="item-val">${num(m.cals) ? fmtInt(num(m.cals)) + ' kcal' : '<span class="faint">Set kcal</span>'}</div>
     <button type="button" class="info-btn" data-act="eye" aria-label="Info, ${esc(m.name)}"><span>i</span></button></div>`;
 }
 function mealExtra(m) {
