@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local wrangler dev. Do not commit .dev.vars.
+# PINs are 4 to 12 digits. These samples are for your own machine only.
+ADNAN_PIN=246810
+ADAM_PIN=135790
+ISMAIL_PIN=102938
+ALLOWED_ORIGINS=http://127.0.0.1:8765,http://localhost:8765

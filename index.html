@@ -32,6 +32,7 @@
       <span class="xp-badge" id="xpLv">1</span>
       <span class="xp-mid"><span class="xp-label" id="xpLabel">Level 1</span><span class="xp-track"><i id="xpFill"></i></span></span>
       <span class="xp-next" id="xpNext">25 to 2</span>
+      <span class="sync-note" id="syncNote" hidden></span>
     </button>
     <button type="button" class="who-btn" id="whoBtn" hidden aria-label="Switch profile"></button>
     <button class="icon-btn" id="themeBtn" aria-label="Switch theme">
@@ -112,7 +113,19 @@
 <div class="trainer" id="trainer" hidden>
   <p class="g-kicker">Trainer</p>
   <h1>Ismail</h1>
-  <p>The trainer view is coming soon.</p>
+  <p id="trainerSoon">The trainer view is coming soon.</p>
+  <div class="trainer-roster" id="trainerRoster"></div>
+</div>
+<div class="who" id="signIn" hidden>
+  <form class="who-in" id="signInForm" autocomplete="off">
+    <p class="g-kicker">PEAK</p>
+    <h1>Sign in</h1>
+    <label class="sign-label">Username<input class="field sign-field" name="username" autocomplete="username" autocapitalize="none" enterkeyhint="next"></label>
+    <label class="sign-label">PIN<input class="field sign-field" name="pin" inputmode="numeric" autocomplete="current-password" maxlength="12" enterkeyhint="go"></label>
+    <button class="pill pill-gold sign-go" type="submit">Sign in</button>
+    <p class="sign-err" id="signInErr" role="alert"></p>
+    <button class="pill sign-out" type="button" id="signOutBtn" hidden>Sign out</button>
+  </form>
 </div>
 <div class="sheet-wrap" id="xpSheet" aria-hidden="true">
   <div class="sheet-scrim" data-xp-close></div>
