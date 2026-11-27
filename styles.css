@@ -65,13 +65,27 @@ h1,h2,h3{font-weight:700;letter-spacing:-.02em;margin:0}
 
 /* ---------- Shell ---------- */
 .app{max-width:520px;margin:0 auto;min-height:100%;position:relative}
-.topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto;grid-template-areas:"brand theme" "xp xp";align-items:center;column-gap:10px;row-gap:10px;
+.topbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:1fr auto auto;grid-template-areas:"brand who theme" "xp xp xp";align-items:center;column-gap:10px;row-gap:10px;
   padding:calc(var(--sat) + 12px) 20px 12px;background:color-mix(in srgb,var(--bg) 82%,transparent);
   -webkit-backdrop-filter:saturate(1.4) blur(18px);backdrop-filter:saturate(1.4) blur(18px);
   border-bottom:1px solid transparent;transition:border-color 200ms var(--ease)}
 .topbar.scrolled{border-bottom-color:var(--line)}
 .brand{grid-area:brand;display:flex;align-items:center;gap:10px}
+#whoBtn{grid-area:who}
 #themeBtn{grid-area:theme}
+.who-btn{width:56px;height:56px;border-radius:18px;background:var(--gold);color:var(--on-gold);font-size:18px;font-weight:800;letter-spacing:-.03em}
+.who{position:fixed;inset:0;z-index:90;overflow:auto;background-color:var(--bg);background-image:var(--bg-image);color:var(--text)}
+.who[hidden],.trainer[hidden]{display:none}
+.who-in{max-width:520px;margin:0 auto;padding:calc(var(--sat) + 48px) 20px 40px}
+.who h1,.trainer h1{font-size:40px;font-weight:800;letter-spacing:-.04em;margin:8px 0 20px}
+.who-cards{display:flex;flex-direction:column;gap:14px}
+.who-card{display:flex;align-items:center;gap:16px;width:100%;min-height:112px;padding:18px;border-radius:24px;background:var(--bg-elev);border:1px solid var(--line);text-align:left;box-shadow:0 16px 36px var(--shadow-color)}
+.who-card b{display:block;font-size:32px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.who-copy span{display:block;margin-top:4px;color:var(--text-muted);font-size:16px;font-weight:600}
+.who-card > .who-av{width:64px;height:64px;flex:none;border-radius:20px;display:grid;place-items:center;overflow:hidden;background:var(--gold);color:#fff;font-size:22px;font-weight:800;line-height:1}
+.trainer{position:fixed;inset:0;z-index:15;display:flex;flex-direction:column;justify-content:center;padding:32px 24px 120px;background-color:var(--bg);background-image:var(--bg-image)}
+.trainer p:last-child{font-size:22px;line-height:1.35;max-width:18ch}
+body.is-trainer .views,body.is-trainer .tabbar,body.is-trainer .xp-chip,body.is-trainer .restbar{display:none}
 .xp-chip{grid-area:xp;display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:8px 10px 8px 8px;border-radius:18px;background:var(--bg-elev);border:1px solid var(--line);text-align:left;box-shadow:0 8px 22px var(--shadow-color)}
 .xp-badge{width:44px;height:44px;flex:none;border-radius:14px;display:grid;place-items:center;background:var(--gold);color:var(--on-gold);font-size:20px;font-weight:800;letter-spacing:-.03em}
 .xp-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}

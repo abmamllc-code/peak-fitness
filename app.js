@@ -193,11 +193,10 @@ function blank() {
     xp: { total: 0, seen: {}, celebrated: 1 },
   };
 }
-function load() {
+function normalizeAthlete(d) {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return blank();
-    const d = JSON.parse(raw), b = blank(), g = d.gym && typeof d.gym === 'object' ? d.gym : {};
+    if (!d || typeof d !== 'object') return blank();
+    const b = blank(), g = d.gym && typeof d.gym === 'object' ? d.gym : {};
     const out = {
       version: 2,
       plan: Array.isArray(d.plan) ? d.plan : b.plan,
@@ -260,10 +259,58 @@ function load() {
     return out;
   } catch (e) { console.warn('PEAK: could not read saved data', e); return blank(); }
 }
+const STORE_KEY = 'peakfit.profiles.v1';
+let STORE = null;
+let ACTIVE = null;
+function profileShell(id, name, role, theme, data) {
+  const row = { id, name, role, theme: theme || 'dark', updatedAt: new Date().toISOString() };
+  if (role === 'trainer') row.title = 'Trainer';
+  else row.data = data;
+  return row;
+}
+function persistStore() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(STORE)); }
+  catch (e) { toast('Could not save — storage is full or blocked', { err: true }); }
+}
+function bootProfiles() {
+  const raw = localStorage.getItem(STORE_KEY);
+  if (raw) {
+    try { STORE = JSON.parse(raw); } catch (_) { STORE = null; }
+  }
+  if (!STORE || !STORE.profiles || !STORE.profiles.adnan) {
+    let adnan = blank(), theme = 'dark';
+    try {
+      const leg = localStorage.getItem(KEY);
+      if (leg) adnan = normalizeAthlete(JSON.parse(leg));
+      theme = localStorage.getItem('peakfit.theme') || theme;
+    } catch (_) {}
+    STORE = {
+      version: 1,
+      activeId: null,
+      profiles: {
+        adnan: profileShell('adnan', 'Adnan', 'athlete', theme, adnan),
+        adam: profileShell('adam', 'Adam', 'athlete', 'dark', blank()),
+        ismail: profileShell('ismail', 'Ismail', 'trainer', 'dark'),
+      },
+    };
+    persistStore();
+  }
+  ACTIVE = STORE.activeId && STORE.profiles[STORE.activeId] ? STORE.activeId : null;
+}
+function load() {
+  bootProfiles();
+  const p = ACTIVE && STORE.profiles[ACTIVE];
+  if (!p || p.role !== 'athlete') return blank();
+  return normalizeAthlete(p.data || {});
+}
 let S = load();
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(S)); }
-  catch (e) { toast('Could not save — storage is full or blocked', { err: true }); }
+  if (!ACTIVE || !STORE.profiles[ACTIVE] || STORE.profiles[ACTIVE].role !== 'athlete') return;
+  const p = STORE.profiles[ACTIVE];
+  p.data = S;
+  p.theme = document.documentElement.getAttribute('data-theme') || p.theme || 'dark';
+  p.updatedAt = new Date().toISOString();
+  persistStore();
 }
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
@@ -1523,7 +1570,8 @@ function applyTheme(t, animate) {
 }
 $('#themeBtn').addEventListener('click', () => {
   const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-  localStorage.setItem('peakfit.theme', t); applyTheme(t, true);
+  applyTheme(t, true);
+  if (ACTIVE && STORE.profiles[ACTIVE]) { STORE.profiles[ACTIVE].theme = t; persistStore(); }
 });
 
 /* ================= Toast ================= */
@@ -1619,7 +1667,7 @@ function interpret(raw) {
   let m;
 
   // Theme
-  if ((m = s.match(/\b(dark|light)\s*(mode|theme)\b/))) { localStorage.setItem('peakfit.theme', m[1]); applyTheme(m[1], true); return { msg: `Switched to ${m[1]} mode` }; }
+  if ((m = s.match(/\b(dark|light)\s*(mode|theme)\b/))) { applyTheme(m[1], true); if (ACTIVE && STORE.profiles[ACTIVE]) { STORE.profiles[ACTIVE].theme = m[1]; persistStore(); } return { msg: `Switched to ${m[1]} mode` }; }
 
   // Shopping: "add to shopping oats", "add oats to my shopping list", "shopping list add oats"
   if ((m = s.match(/^(?:add|put|stick|need)\s+(?:to|on|onto|in)\s+(?:the\s+|my\s+)?(?:shopping(?:\s+list)?|list)\s+(.+)$/) || s.match(/^(?:add|put|stick)\s+(.+?)\s+(?:to|on|onto|in)\s+(?:the\s+|my\s+)?(?:shopping(?:\s+list)?|list|trolley|basket)$/) || s.match(/^shopping(?:\s+list)?\s+(?:add\s+)?(.+)$/))) {
@@ -1882,6 +1930,65 @@ document.addEventListener('visibilitychange', () => {
   tick();
 });
 window.addEventListener('pagehide', parkGym);
+function profileInitials(name) {
+  if (name === 'Adnan') return 'Ad';
+  if (name === 'Adam') return 'Am';
+  if (name === 'Ismail') return 'Is';
+  return String(name || '?').slice(0, 2);
+}
+function paintProfile() {
+  const btn = $('#whoBtn'); if (!btn) return;
+  const p = ACTIVE && STORE.profiles[ACTIVE];
+  const trainer = !!(p && p.role === 'trainer');
+  document.body.classList.toggle('is-trainer', trainer);
+  const panel = $('#trainer'); if (panel) panel.hidden = !trainer;
+  if (!p) { btn.hidden = true; return; }
+  btn.hidden = false;
+  btn.textContent = profileInitials(p.name);
+  btn.setAttribute('aria-label', 'Switch profile, ' + p.name + (p.role === 'trainer' ? ', trainer' : ''));
+}
+function showWho() {
+  const root = $('#who'); if (!root) return;
+  const order = ['adnan', 'adam', 'ismail'];
+  $('#whoCards').innerHTML = order.map(id => {
+    const p = STORE.profiles[id];
+    const sub = p.role === 'trainer' ? 'Trainer' : 'Athlete';
+    return `<button type="button" class="who-card" data-profile="${id}"><span class="who-av">${profileInitials(p.name)}</span><span class="who-copy"><b>${esc(p.name)}</b><span>${sub}</span></span></button>`;
+  }).join('');
+  root.hidden = false;
+}
+function chooseProfile(id) {
+  const next = STORE.profiles[id]; if (!next) return;
+  if (ACTIVE && STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].role === 'athlete') {
+    STORE.profiles[ACTIVE].data = S;
+    STORE.profiles[ACTIVE].theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    STORE.profiles[ACTIVE].updatedAt = new Date().toISOString();
+  }
+  stopRest();
+  STORE.activeId = id;
+  ACTIVE = id;
+  applyTheme(next.theme || 'dark', false);
+  if (next.role === 'trainer') {
+    persistStore();
+    paintProfile();
+    $('#who').hidden = true;
+    return;
+  }
+  S = normalizeAthlete(next.data || {});
+  next.data = S;
+  persistStore();
+  paintProfile();
+  $('#who').hidden = true;
+  U.mealsDate = today();
+  U.gymDate = today();
+  setTab('meals', true);
+  paintXp();
+}
+$('#whoBtn').addEventListener('click', showWho);
+$('#who').addEventListener('click', e => { const b = e.target.closest('[data-profile]'); if (b) chooseProfile(b.dataset.profile); });
+paintProfile();
+if (!ACTIVE) showWho();
+else applyTheme((STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].theme) || 'dark', false);
 paintRest();
 paintXp();
 $('#xpBar').addEventListener('click', openXp);
