@@ -1,5 +1,5 @@
 /* PEAK Fitness service worker — caches the app shell for offline use. */
-const CACHE = 'peakfit-v14';
+const CACHE = 'peakfit-v16';
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './assets/icon.svg', './assets/icon-180.png', './assets/icon-192.png', './assets/icon-256.png', './assets/icon-512.png',
@@ -15,7 +15,14 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== location.origin) return;
+  // sync.json turns cloud sync on after deploy. It must not stick in the app cache.
+  if (url.pathname.endsWith('/sync.json')) {
+    e.respondWith(fetch(req, { cache: 'no-store' }));
+    return;
+  }
   // Stale-while-revalidate: instant from cache, refresh in background.
   e.respondWith(caches.open(CACHE).then(async cache => {
     const hit = await cache.match(req, { ignoreSearch: true });
