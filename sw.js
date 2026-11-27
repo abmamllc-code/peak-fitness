@@ -1,5 +1,5 @@
 /* PEAK Fitness service worker — caches the app shell for offline use. */
-const CACHE = 'peakfit-v6';
+const CACHE = 'peakfit-v7';
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './assets/peak-wordmark.png', './assets/peak-wordmark-light.png',
