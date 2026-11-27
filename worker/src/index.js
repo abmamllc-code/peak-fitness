@@ -170,7 +170,6 @@ function stateFromRow(row) {
 }
 
 function summarize(data, localDate) {
-  const xp = data.xp && Number(data.xp.total) || 0;
   const days = data.days && typeof data.days === 'object' ? data.days : {};
   const meals = localDate && days[localDate] && Array.isArray(days[localDate].meals) ? days[localDate].meals : [];
   let streak = 0;
@@ -178,9 +177,10 @@ function summarize(data, localDate) {
   while (cursor && dayComplete(days, cursor) && streak < 60) { streak++; cursor = prevDate(cursor); }
   const workouts = recentWorkouts(data.workouts);
   return {
-    level: levelFrom(xp), xp, streak,
+    streak,
     meals: { done: meals.filter(m => m && m.done).length, total: meals.length },
     workouts, lastWorkout: workouts[0] || null, bodyweight: latestWeight(data.bodyweight),
+    strength: strengthBook(data, localDate),
   };
 }
 
@@ -225,11 +225,96 @@ function latestWeight(list) {
   return { value: Number(last.value), date: String(last.date).slice(0, 10) };
 }
 
-function xpNeed(level) { return Math.round(25 * Math.pow(Math.max(1, level), 1.55)); }
-function levelFrom(total) {
-  let level = 1, spent = 0, guard = 0;
-  while (spent + xpNeed(level) <= total && guard < 500) { spent += xpNeed(level); level++; guard++; }
-  return level;
+function epley(weight, reps) {
+  if (!(weight > 0) || !(reps > 0)) return 0;
+  return weight * (1 + reps / 30);
+}
+function mainOf(name) {
+  const n = String(name || '');
+  if (/romanian|straight[\s-]*leg|\brdl\b/i.test(n)) return 'rdl';
+  if (/deadlift/i.test(n)) return 'dead';
+  if (/incline/i.test(n)) return null;
+  if (/bench/i.test(n)) return 'bench';
+  if (/overhead press|\bohp\b/i.test(n)) return 'ohp';
+  if (/squat/i.test(n) && !/goblet/i.test(n)) return 'squat';
+  if (/pulldown|pull-down|pull down/i.test(n)) return 'pulldown';
+  if (/\brow\b/i.test(n) && !/face/i.test(n)) return 'row';
+  return null;
+}
+function addDaysIso(iso, n) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+function scoreChange(points, asOf) {
+  if (!points || points.length < 2) return null;
+  const cur = points[points.length - 1];
+  const cut = addDaysIso(asOf || cur.date, -7);
+  const prior = points.filter(p => p.date <= cut);
+  const base = prior.length ? prior[prior.length - 1] : points[0];
+  if (!base || !(base.value > 0)) return null;
+  if (base === cur) return { pct: 0, week: true, baseDate: base.date };
+  return { pct: (cur.value - base.value) / base.value * 100, week: base.date <= cut, baseDate: base.date };
+}
+function strengthBook(data, asOf) {
+  const mains = ['bench', 'ohp', 'dead', 'squat', 'rdl', 'pulldown', 'row'];
+  const names = { bench: 'Bench', ohp: 'Overhead press', dead: 'Deadlift', squat: 'Squat', rdl: 'RDL', pulldown: 'Lat pulldown', row: 'Row' };
+  const workouts = data && data.workouts && typeof data.workouts === 'object' ? data.workouts : {};
+  const latest = {}, liftPoints = {};
+  mains.forEach(k => { liftPoints[k] = []; });
+  const points = [];
+  Object.keys(workouts).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().forEach(date => {
+    const w = workouts[date];
+    if (!w || !Array.isArray(w.exercises)) return;
+    const dayBest = {};
+    w.exercises.forEach(ex => {
+      if (!ex || ex.kind === 'warmup' || ex.kind === 'down') return;
+      const key = mainOf(ex.name);
+      if (!key) return;
+      let best = 0;
+      (ex.sets || []).forEach(s => {
+        if (!s || (!s.done && !(Number(s.weight) > 0))) return;
+        best = Math.max(best, epley(Number(s.weight), Number(s.reps)));
+      });
+      if (best > 0) dayBest[key] = Math.max(dayBest[key] || 0, best);
+    });
+    if (!Object.keys(dayBest).length) return;
+    Object.keys(dayBest).forEach(key => {
+      latest[key] = dayBest[key];
+      liftPoints[key].push({ date, value: Math.round(dayBest[key] * 10) / 10 });
+    });
+    const total = Object.keys(latest).reduce((a, k) => a + latest[k], 0);
+    points.push({ date, value: Math.round(total * 10) / 10 });
+  });
+  const when = asOf || (points.length ? points[points.length - 1].date : '');
+  const list = Array.isArray(data && data.bodyweight) ? data.bodyweight.filter(b => b && Number(b.value) > 0).slice().sort((a, b) => a.date < b.date ? -1 : 1) : [];
+  const bw = list.map(b => ({ date: String(b.date).slice(0, 10), value: Number(b.value) }));
+  const start = addDaysIso(when, -6);
+  let sessions = 0;
+  Object.keys(workouts).forEach(d => {
+    if (!start || d < start || d > when) return;
+    const w = workouts[d];
+    const hit = w && Array.isArray(w.exercises) && w.exercises.some(ex => ex && ex.kind !== 'warmup' && ex.kind !== 'down' && (ex.sets || []).some(s => s && (s.done || Number(s.weight) > 0)));
+    if (hit || (w && w.end)) sessions++;
+  });
+  const days = data && data.days && typeof data.days === 'object' ? data.days : {};
+  let done = 0, totalMeals = 0;
+  Object.keys(days).forEach(d => {
+    if (!start || d < start || d > when) return;
+    const meals = days[d] && days[d].meals;
+    if (!Array.isArray(meals) || !meals.length) return;
+    totalMeals += meals.length;
+    done += meals.filter(m => m && m.done).length;
+  });
+  return {
+    points,
+    change: scoreChange(points, when),
+    lifts: mains.map(key => ({ key, name: names[key], points: liftPoints[key], value: liftPoints[key].length ? liftPoints[key][liftPoints[key].length - 1].value : 0, change: scoreChange(liftPoints[key], when) })),
+    body: bw.length ? { points: bw, value: bw[bw.length - 1].value, date: bw[bw.length - 1].date, change: scoreChange(bw, when) } : null,
+    consistency: { sessions, mealsPct: totalMeals ? Math.round(100 * done / totalMeals) : null },
+  };
 }
 
 async function lockedOut(env, username) {

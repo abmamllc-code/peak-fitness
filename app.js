@@ -328,20 +328,7 @@ function save() {
 }
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
-/* ================= Levels =================
-   Step to the next level is round(25 × level^1.55). Level 1 needs 25 XP, then each step is bigger. */
-function xpNeed(level) { return Math.round(25 * Math.pow(Math.max(1, level), 1.55)); }
-function levelState(total) {
-  let level = 1, spent = 0, guard = 0;
-  while (spent + xpNeed(level) <= total && guard < 500) { spent += xpNeed(level); level++; guard++; }
-  return { level, into: total - spent, need: xpNeed(level), total: total || 0 };
-}
-function xpBucket(prefix) {
-  const seen = (S.xp && S.xp.seen) || {};
-  let n = 0, xp = 0;
-  Object.keys(seen).forEach(k => { if (k.startsWith(prefix)) { n++; xp += num(seen[k]); } });
-  return { n, xp };
-}
+/* Counters stay on the saved record so a tick is only counted once. Nothing in the UI reads them. */
 function fullDay(date) {
   const day = S.days[date];
   const meals = day && Array.isArray(day.meals) ? day.meals : [];
@@ -355,15 +342,8 @@ function streakCount(date) {
 function grant(id, amount) {
   if (!S.xp) S.xp = { total: 0, seen: {}, celebrated: 1 };
   if (S.xp.seen[id]) return false;
-  const before = levelState(S.xp.total).level;
   S.xp.seen[id] = amount;
   S.xp.total += amount;
-  const after = levelState(S.xp.total).level;
-  paintXp();
-  if (after > before) {
-    S.xp.celebrated = after;
-    showLevelUp(after);
-  }
   return true;
 }
 function noteDay(date) {
@@ -371,48 +351,6 @@ function noteDay(date) {
   grant('day:' + date, 50);
   const streak = streakCount(date);
   if (streak >= 2) grant('streak:' + date, 15 * Math.min(streak, 10));
-}
-function paintXp() {
-  const bar = $('#xpBar'); if (!bar || !S.xp) return;
-  const st = levelState(S.xp.total);
-  const pct = st.need ? Math.max(0, Math.min(1, st.into / st.need)) : 0;
-  $('#xpLv').textContent = st.level;
-  $('#xpLabel').textContent = 'Level ' + st.level;
-  $('#xpFill').style.transform = 'scaleX(' + pct + ')';
-  $('#xpNext').textContent = (st.need - st.into) + ' to ' + (st.level + 1);
-  bar.setAttribute('aria-label', 'Level ' + st.level + ', ' + (st.need - st.into) + ' XP to level ' + (st.level + 1));
-}
-function showLevelUp(level) {
-  const el = $('#lvlUp'); if (!el) return;
-  $('#lvlNum').textContent = level;
-  el.hidden = false;
-  el.classList.remove('show');
-  void el.offsetWidth;
-  el.classList.add('show');
-}
-function openXp() {
-  const st = levelState(S.xp.total);
-  const rows = [
-    ['Meal ticked', '25 XP', 'Once each. Untick and tick again does not add more.', xpBucket('meal:')],
-    ['Set done', '10 XP', 'Once for each set you tick in a workout.', xpBucket('set:')],
-    ['Workout finished', '100 XP', 'Once for each day you finish a session.', xpBucket('workout:')],
-    ['Shop item ticked', '10 XP', 'Once for each thing you mark as bought.', xpBucket('shop:')],
-    ['Full day', '50 XP', 'Every meal that day is ticked. Once.', xpBucket('day:')],
-    ['Streak', '15 × days', 'From the second full day in a row, up to 10 days. Once for that day.', xpBucket('streak:')],
-  ];
-  $('#xpBody').innerHTML = `<div class="xp-sheet-top"><div><div class="card-kicker">Progress</div><h2>Level ${st.level}</h2></div>
-    <button type="button" class="eye-x" data-xp-close>${I.x}<span>Close</span></button></div>
-    <div class="xp-sheet-bar"><i style="transform:scaleX(${st.need ? st.into / st.need : 0})"></i></div>
-    <p class="xp-nextline"><b>${st.need - st.into} XP</b> to level ${st.level + 1}. You have ${fmtInt(st.total)} XP in total.</p>
-    <p class="xp-rule">Early levels come from a meal or two. Later levels ask for more, because each step is bigger than the last.</p>
-    ${rows.map(([name, rate, why, bag]) => `<div class="xp-row"><div><b>${name}</b><span>${why}</span></div><div class="xp-row-n"><b>${rate}</b><span>${bag.n ? bag.xp + ' XP so far' : 'None yet'}</span></div></div>`).join('')}
-    <p class="xp-nextline">Next up: tick a meal, finish a set, or clear a shop item.</p>`;
-  const wrap = $('#xpSheet');
-  wrap.classList.add('open'); wrap.setAttribute('aria-hidden', 'false');
-}
-function closeXp() {
-  const wrap = $('#xpSheet'); if (!wrap) return;
-  wrap.classList.remove('open'); wrap.setAttribute('aria-hidden', 'true');
 }
 
 /* UI state (not persisted except tab) */
@@ -515,6 +453,205 @@ function liftSeries() {
     const s = map.get(k); s.name = e.name; s.points.push({ date: d, value: num(t.weight), reps: num(t.reps) });
   }));
   return Array.from(map.values());
+}
+const MAIN = [
+  { key: 'bench', name: 'Bench' },
+  { key: 'ohp', name: 'Overhead press' },
+  { key: 'dead', name: 'Deadlift' },
+  { key: 'squat', name: 'Squat' },
+  { key: 'rdl', name: 'RDL' },
+  { key: 'pulldown', name: 'Lat pulldown' },
+  { key: 'row', name: 'Row' },
+];
+function epley(weight, reps) {
+  if (!(weight > 0) || !(reps > 0)) return 0;
+  return weight * (1 + reps / 30);
+}
+function mainOf(name) {
+  const n = String(name || '');
+  if (/romanian|straight[\s-]*leg|\brdl\b/i.test(n)) return 'rdl';
+  if (/deadlift/i.test(n)) return 'dead';
+  if (/incline/i.test(n)) return null;
+  if (/bench/i.test(n)) return 'bench';
+  if (/overhead press|\bohp\b/i.test(n)) return 'ohp';
+  if (/squat/i.test(n) && !/goblet/i.test(n)) return 'squat';
+  if (/pulldown|pull-down|pull down/i.test(n)) return 'pulldown';
+  if (/\brow\b/i.test(n) && !/face/i.test(n)) return 'row';
+  const lib = libFor(name);
+  if (!lib) return null;
+  const key = Object.keys(LIB).find(k => LIB[k] === lib);
+  return MAIN.some(m => m.key === key) ? key : null;
+}
+function bestE1(sets) {
+  let best = 0;
+  (sets || []).forEach(s => {
+    if (!s || (!s.done && !(num(s.weight) > 0))) return;
+    best = Math.max(best, epley(num(s.weight), num(s.reps)));
+  });
+  return best;
+}
+function scoreChange(points, asOf) {
+  if (!points || points.length < 2) return null;
+  const cur = points[points.length - 1];
+  const cut = addDays(asOf || cur.date, -7);
+  const prior = points.filter(p => p.date <= cut);
+  const base = prior.length ? prior[prior.length - 1] : points[0];
+  if (!base || !(base.value > 0)) return null;
+  if (base === cur) return { pct: 0, week: true, baseDate: base.date };
+  return { pct: (cur.value - base.value) / base.value * 100, week: base.date <= cut, baseDate: base.date };
+}
+function consistencyOf(src, asOf) {
+  const start = addDays(asOf, -6);
+  let sessions = 0;
+  const workouts = (src && src.workouts) || {};
+  Object.keys(workouts).forEach(d => {
+    if (d < start || d > asOf) return;
+    const w = workouts[d];
+    const hit = w && Array.isArray(w.exercises) && w.exercises.some(ex => ex && ex.kind !== 'warmup' && ex.kind !== 'down' && (ex.sets || []).some(s => s && (s.done || num(s.weight) > 0)));
+    if (hit || (w && w.end)) sessions++;
+  });
+  const days = (src && src.days) || {};
+  let done = 0, total = 0;
+  Object.keys(days).forEach(d => {
+    if (d < start || d > asOf) return;
+    const meals = days[d] && days[d].meals;
+    if (!Array.isArray(meals) || !meals.length) return;
+    total += meals.length;
+    done += meals.filter(m => m && m.done).length;
+  });
+  return { sessions, mealsPct: total ? Math.round(100 * done / total) : null };
+}
+function strengthBook(data, who) {
+  const src = data || S;
+  const workouts = (src && src.workouts) || {};
+  const latest = {}, liftPoints = {};
+  MAIN.forEach(m => { liftPoints[m.key] = []; });
+  const points = [];
+  Object.keys(workouts).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().forEach(date => {
+    const w = workouts[date];
+    if (!w || !Array.isArray(w.exercises)) return;
+    const dayBest = {};
+    w.exercises.forEach(ex => {
+      if (!ex || ex.kind === 'warmup' || ex.kind === 'down') return;
+      const key = mainOf(ex.name);
+      if (!key) return;
+      const e = bestE1(ex.sets);
+      if (e > 0) dayBest[key] = Math.max(dayBest[key] || 0, e);
+    });
+    if (!Object.keys(dayBest).length) return;
+    Object.keys(dayBest).forEach(key => {
+      latest[key] = dayBest[key];
+      liftPoints[key].push({ date, value: round1(dayBest[key]) });
+    });
+    points.push({ date, value: round1(Object.keys(latest).reduce((a, k) => a + latest[k], 0)) });
+  });
+  const asOf = today();
+  const bw = sortByDate((src.bodyweight || []).filter(b => b && num(b.value) > 0)).map(b => ({ date: String(b.date).slice(0, 10), value: num(b.value) }));
+  return {
+    who: who || '',
+    points,
+    change: scoreChange(points, asOf),
+    lifts: MAIN.map(m => {
+      const pts = liftPoints[m.key];
+      return { key: m.key, name: m.name, points: pts, value: pts.length ? pts[pts.length - 1].value : 0, change: scoreChange(pts, asOf) };
+    }),
+    body: bw.length ? { points: bw, value: bw[bw.length - 1].value, date: bw[bw.length - 1].date, change: scoreChange(bw, asOf) } : null,
+    consistency: consistencyOf(src, asOf),
+  };
+}
+function rangePoints(points, range, asOf) {
+  if (!points || !points.length || range === 'ALL') return (points || []).slice();
+  const days = range === '1W' ? 7 : range === '1M' ? 30 : 90;
+  const cut = addDays(asOf || today(), -days);
+  const inside = points.filter(p => p.date >= cut);
+  const before = points.filter(p => p.date < cut);
+  if (before.length && inside.length) return [before[before.length - 1]].concat(inside);
+  return inside.length ? inside : (before.length ? [before[before.length - 1]] : []);
+}
+function chgText(pct) {
+  if (pct == null || !isFinite(pct)) return '';
+  return (pct >= 0 ? '+' : '−') + fmt(Math.abs(pct), 1) + '%';
+}
+function paintStrength() {
+  const bar = $('#strengthBar'); if (!bar) return;
+  const book = strengthBook(S);
+  const ready = book.points.length >= 2;
+  $('#tickN').textContent = ready ? fmt(book.points[book.points.length - 1].value, 0) : '—';
+  const chg = $('#tickChg');
+  chg.className = 'tick-chg';
+  if (!ready) chg.textContent = 'Two sessions to start';
+  else if (!book.change) chg.textContent = 'Flat';
+  else {
+    chg.textContent = chgText(book.change.pct);
+    chg.classList.add(book.change.pct >= 0 ? 'up' : 'down');
+  }
+  $('#tickSpark').innerHTML = ready ? sparkSVG(book.points.slice(-16)) : '';
+  bar.setAttribute('aria-label', ready && book.change
+    ? 'Strength score ' + fmt(book.points[book.points.length - 1].value, 0) + ', ' + (book.change.pct >= 0 ? 'up ' : 'down ') + fmt(Math.abs(book.change.pct), 1) + ' percent ' + (book.change.week ? 'versus last week' : 'since ' + shortDate(book.change.baseDate))
+    : 'Strength score. Log two sessions to start.');
+}
+let MKT = { range: '3M', key: 'total', book: null };
+function seriesFor(key, book) {
+  if (!book) return [];
+  if (key === 'body') return book.body ? book.body.points : [];
+  if (key === 'total') return book.points || [];
+  const lift = (book.lifts || []).find(l => l.key === key);
+  return lift ? lift.points : [];
+}
+function titleFor(key, book) {
+  const who = book && book.who ? book.who + ' · ' : '';
+  if (key === 'body') return who + 'Body weight';
+  if (key === 'total') return who + 'Strength score';
+  const lift = (book.lifts || []).find(l => l.key === key);
+  return who + (lift ? lift.name : 'Strength score');
+}
+function paintMarket() {
+  const book = MKT.book || strengthBook(S);
+  MKT.book = book;
+  const all = seriesFor(MKT.key, book);
+  const shown = rangePoints(all, MKT.range, today());
+  $('#mktK').textContent = titleFor(MKT.key, book);
+  const last = all.length ? all[all.length - 1].value : null;
+  $('#mktN').textContent = last == null ? '—' : fmt(last, MKT.key === 'body' ? 1 : 0);
+  const chg = $('#mktChg');
+  chg.className = 'mkt-chg';
+  if (all.length < 2) chg.textContent = 'Two sessions to start';
+  else if (shown.length < 2 || !(shown[0].value > 0)) chg.textContent = 'Not enough in this range';
+  else {
+    const pct = (shown[shown.length - 1].value - shown[0].value) / shown[0].value * 100;
+    chg.textContent = chgText(pct) + '  ' + MKT.range;
+    chg.classList.add(pct >= 0 ? 'up' : 'down');
+  }
+  $('#mktChart').innerHTML = shown.length >= 2 ? chartSVG(shown, 'kg') : `<p class="mkt-empty">${all.length < 2 ? 'Log two sessions and this chart starts.' : 'Nothing in this range yet.'}</p>`;
+  $$('#mktRanges button').forEach(b => b.classList.toggle('on', b.dataset.range === MKT.range));
+  const more = $('#mktMore');
+  if (MKT.key !== 'total') { more.innerHTML = ''; return; }
+  const row = l => {
+    const pct = l.points.length >= 2 && l.change ? l.change.pct : null;
+    const cls = pct == null ? '' : pct >= 0 ? 'up' : 'down';
+    const pctTxt = pct == null ? (l.points.length ? 'New' : '—') : chgText(pct);
+    return `<button type="button" class="hold" data-lift="${l.key}"><span><b>${esc(l.name)}</b><span class="sub">${l.points.length ? 'Estimated 1-rep max' : 'No sets yet'}</span></span>${l.points.length >= 2 ? sparkSVG(l.points.slice(-12)) : '<svg class="spark" viewBox="0 0 64 24"></svg>'}<span class="hold-n"><strong>${l.value ? fmt(l.value, 0) : '—'}</strong><span class="${cls}">${pctTxt}</span></span></button>`;
+  };
+  let body = '';
+  if (book.body) {
+    const b = book.body;
+    const pct = b.points.length >= 2 && b.change ? b.change.pct : null;
+    body = `<button type="button" class="hold" data-lift="body"><span><b>Body weight</b><span class="sub">kg</span></span>${b.points.length >= 2 ? sparkSVG(b.points.slice(-12)) : '<svg class="spark" viewBox="0 0 64 24"></svg>'}<span class="hold-n"><strong>${fmt(b.value, 1)}</strong><span class="${pct == null ? '' : pct >= 0 ? 'up' : 'down'}">${pct == null ? 'New' : chgText(pct)}</span></span></button>`;
+  }
+  const c = book.consistency || { sessions: 0, mealsPct: null };
+  const meals = c.mealsPct == null ? 'No meals logged this week' : c.mealsPct + '% meals hit';
+  more.innerHTML = `<p class="mkt-h">Holdings</p>${(book.lifts || []).map(row).join('')}${body}<p class="mkt-line">${c.sessions} workout${c.sessions === 1 ? '' : 's'} / week · ${meals}</p>`;
+}
+function openMarket(book) {
+  MKT.book = book || strengthBook(S);
+  MKT.key = 'total';
+  $('#mkt').hidden = false;
+  paintMarket();
+}
+function closeMarket() {
+  const el = $('#mkt'); if (!el) return;
+  if (MKT.key !== 'total') { MKT.key = 'total'; paintMarket(); return; }
+  el.hidden = true;
 }
 
 /* ================= Deltas ================= */
@@ -1220,6 +1357,7 @@ function renderProgress() {
 }
 
 function render() {
+  paintStrength();
   if (U.tab !== 'gym') document.body.classList.remove('guiding');
   if (U.tab === 'meals') renderMeals();
   else if (U.tab === 'shop') renderShop();
@@ -1848,7 +1986,7 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (sheet.classList.contains('open')) closeSheet();
   if ($('#eyePop').classList.contains('open')) closeEye();
-  if ($('#xpSheet').classList.contains('open')) closeXp();
+  if ($('#mkt') && !$('#mkt').hidden) closeMarket();
 });
 
 /* ================= Meal eye overlay ================= */
@@ -2004,7 +2142,7 @@ function chooseProfile(id) {
   U.mealsDate = today();
   U.gymDate = today();
   setTab('meals', true);
-  paintXp();
+  paintStrength();
 }
 function askSwitch() {
   if (SYNC) showSignIn({ cancel: true });
@@ -2099,7 +2237,7 @@ function applyRemote(state) {
   if (state.theme) { p.theme = state.theme; applyTheme(state.theme, false); }
   persistStore();
   render();
-  paintXp();
+  paintStrength();
   syncing = false;
 }
 async function pushState(baseRev, retry) {
@@ -2153,7 +2291,6 @@ function workoutList(workouts) {
 }
 function summarizeAthlete(raw) {
   const data = normalizeAthlete(raw || {});
-  const xp = data.xp.total || 0;
   const date = today();
   const dayMeals = (data.days[date] && data.days[date].meals) || [];
   let streak = 0, cursor = mealsDone(data.days, date) ? date : addDays(date, -1);
@@ -2162,11 +2299,13 @@ function summarizeAthlete(raw) {
   const bw = sortByDate(data.bodyweight || []);
   const last = bw.length ? bw[bw.length - 1] : null;
   const anyMeal = Object.keys(data.days || {}).some(d => ((data.days[d] && data.days[d].meals) || []).some(m => m && m.done));
+  const book = strengthBook(data, '');
   return {
-    level: levelState(xp).level, xp, streak,
+    streak,
     meals: { done: dayMeals.filter(m => m && m.done).length, total: dayMeals.length },
     workouts, bodyweight: last && num(last.value) > 0 ? { value: last.value, date: last.date } : null,
-    logged: xp > 0 || anyMeal || workouts.length > 0 || !!(last && num(last.value) > 0),
+    book,
+    logged: book.points.length > 0 || anyMeal || workouts.length > 0 || !!(last && num(last.value) > 0),
   };
 }
 function localPeople() {
@@ -2175,8 +2314,9 @@ function localPeople() {
 function rosterLogged(a) {
   if (!a) return false;
   const meals = a.meals || {};
-  return !!(a.xp > 0 || a.streak || meals.done || (a.workouts && a.workouts.length) || a.bodyweight || (a.lastWorkout && a.lastWorkout.sets));
+  return !!(a.streak || meals.done || (a.workouts && a.workouts.length) || a.bodyweight || (a.lastWorkout && a.lastWorkout.sets) || (a.book && a.book.points && a.book.points.length) || (a.strength && a.strength.points && a.strength.points.length));
 }
+const BOOKS = {};
 function trainerCard(a) {
   const meals = a.meals || {};
   const mealLine = meals.total ? meals.done + ' of ' + meals.total + ' meals ticked today' : 'No meals ticked today';
@@ -2184,8 +2324,16 @@ function trainerCard(a) {
   const setsLabel = n => n === 1 ? '1 set' : (n || 0) + ' sets';
   const wos = list.map(w => `<li><b>${esc(prettyDate(w.date) || w.date || '')}</b> · ${esc(dayTitle(w.day))} · ${setsLabel(w.sets || 0)} · ${fmtInt(w.volume || 0)} kg</li>`).join('');
   const bw = a.bodyweight ? `<p>Body weight ${fmt(a.bodyweight.value)} kg${a.bodyweight.date ? ' · ' + esc(prettyDate(a.bodyweight.date)) : ''}</p>` : '';
+  const book = a.book || a.strength || { points: [], lifts: [], change: null, consistency: { sessions: 0, mealsPct: null } };
+  book.who = a.name;
+  BOOKS[a.id] = book;
+  const ready = book.points && book.points.length >= 2;
+  const n = ready ? fmt(book.points[book.points.length - 1].value, 0) : '—';
+  const pct = ready && book.change ? book.change.pct : null;
+  const chg = !ready ? 'Two sessions to start' : pct == null ? 'Flat' : chgText(pct);
+  const cls = pct == null ? '' : pct >= 0 ? 'up' : 'down';
   return `<article class="trainer-card"><h2>${esc(a.name)}</h2>
-    <p><b>Level ${a.level || 1}</b> · ${fmtInt(a.xp || 0)} XP</p>
+    <button type="button" class="trainer-tick" data-athlete="${esc(a.id)}"><span class="trainer-tick-copy"><span class="tick-k">Strength score</span><span class="tick-row"><b>${n}</b><span class="tick-chg ${cls}">${chg}</span></span></span>${ready ? sparkSVG(book.points.slice(-12)) : ''}</button>
     <p>${a.streak ? a.streak + ' day streak' : 'No streak yet'}</p>
     <p>${mealLine}</p>
     ${wos ? `<p class="trainer-k">Workouts</p><ul class="trainer-wos">${wos}</ul>` : '<p>No workouts saved</p>'}
@@ -2227,7 +2375,7 @@ async function loadRoster() {
     box.innerHTML = people.some(p => p.logged) ? people.map(p => p.logged ? trainerCard(p) : quietCard(p.name, 'Nothing on this phone yet.')).join('') : '';
     return;
   }
-  const athletes = data.athletes.map(a => Object.assign({}, a, { logged: rosterLogged(a) }));
+  const athletes = data.athletes.map(a => Object.assign({}, a, { book: a.strength || null, logged: rosterLogged(a) }));
   if (!athletes.some(a => a.logged)) {
     if (note) { note.hidden = false; note.textContent = 'Nothing synced yet. This fills in once Adnan and Adam sign in on their phones.'; }
     box.innerHTML = '';
@@ -2299,10 +2447,13 @@ if (STORE.picked) {
   if (isTrainer()) renderTrainer();
 } else document.body.classList.add('gate-wait');
 paintRest();
-paintXp();
-$('#xpBar').addEventListener('click', openXp);
-$('#xpSheet').addEventListener('click', e => { if (e.target.hasAttribute('data-xp-close') || e.target.closest('[data-xp-close]')) closeXp(); });
-$('#lvlOk').addEventListener('click', () => { const el = $('#lvlUp'); el.classList.remove('show'); el.hidden = true; });
+paintStrength();
+bindChartScrub($('#mkt'));
+$('#strengthBar').addEventListener('click', () => openMarket(strengthBook(S)));
+$('#mktBack').addEventListener('click', closeMarket);
+$('#mktRanges').addEventListener('click', e => { const b = e.target.closest('[data-range]'); if (!b) return; MKT.range = b.dataset.range; paintMarket(); });
+$('#mktMore').addEventListener('click', e => { const b = e.target.closest('[data-lift]'); if (!b) return; MKT.key = b.dataset.lift; paintMarket(); });
+$('#trainerRoster').addEventListener('click', e => { const b = e.target.closest('[data-athlete]'); if (!b || !BOOKS[b.dataset.athlete]) return; openMarket(BOOKS[b.dataset.athlete]); });
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 initSync();
 
