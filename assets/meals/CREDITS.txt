@@ -1,9 +1,9 @@
 Meal photos are stored in this folder so the app works offline. Crops are derivatives of the originals.
 
-chicken-rice.jpg
-  Chicken, white rice and broccoli. Cropped from a wider photo so the plate is just this meal.
-  Roman Odintsov — https://www.pexels.com/photo/rice-toppings-and-french-fries-on-the-table-5836771/
-  Pexels Licence — https://www.pexels.com/license/
+chicken-potatoes.jpg
+  Roast chicken with potatoes. Cropped to the chicken and potatoes. It is a whole roast bird with the skin on, not boneless skinless thighs. A little tomato and cheese remains in the corner.
+  Biso — https://commons.wikimedia.org/wiki/File:Roasted_chicken_and_potatoes.JPG
+  CC BY 3.0 — https://creativecommons.org/licenses/by/3.0/
 
 snack-yogurt.jpg
   Yogurt with green grapes and blueberries. The photo also shows banana, nuts and seeds, which are not in this portion.
