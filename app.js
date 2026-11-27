@@ -311,6 +311,7 @@ function save() {
   p.theme = document.documentElement.getAttribute('data-theme') || p.theme || 'dark';
   p.updatedAt = new Date().toISOString();
   persistStore();
+  if (!syncing) scheduleSync();
 }
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
@@ -1984,7 +1985,170 @@ function chooseProfile(id) {
   setTab('meals', true);
   paintXp();
 }
-$('#whoBtn').addEventListener('click', showWho);
+let SYNC = null, SYNC_USER = null, syncing = false, syncTimer = null;
+function setSyncStatus(text) {
+  const note = $('#syncNote'); if (!note || !SYNC) return;
+  note.hidden = !text;
+  note.textContent = text || '';
+}
+function syncToken() { return localStorage.getItem('peakfit.sync.token') || ''; }
+async function api(path, opts) {
+  if (!SYNC) return null;
+  const headers = { 'Content-Type': 'application/json' };
+  const token = syncToken();
+  if (token) headers.Authorization = 'Bearer ' + token;
+  try {
+    const res = await fetch(SYNC.workerUrl + path, { method: (opts && opts.method) || 'GET', headers, body: opts && opts.body ? JSON.stringify(opts.body) : undefined });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 409) return data;
+    if (!res.ok) return { error: data.error || 'Request failed', status: res.status };
+    return data;
+  } catch (_) { return null; }
+}
+function showSignIn() {
+  const form = $('#signIn'); if (!form) return;
+  $('#who').hidden = true;
+  form.hidden = false;
+  const out = $('#signOutBtn');
+  if (out) out.hidden = !SYNC_USER;
+  const err = $('#signInErr'); if (err) err.textContent = '';
+}
+async function signIn(username, pin) {
+  const err = $('#signInErr');
+  if (err) err.textContent = '';
+  const data = await api('/api/login', { method: 'POST', body: { username, pin } });
+  if (!data || !data.token || !data.user) {
+    if (err) err.textContent = (data && data.error) || 'Can’t reach the server. You can keep using the phone offline after you have signed in once.';
+    return;
+  }
+  localStorage.setItem('peakfit.sync.token', data.token);
+  await enterAccount(data.user);
+}
+async function enterAccount(user) {
+  SYNC_USER = user;
+  $('#signIn').hidden = true;
+  setSyncStatus('Signed in');
+  if (user.role === 'trainer') {
+    if (ACTIVE && STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].role === 'athlete') {
+      STORE.profiles[ACTIVE].data = S;
+      STORE.profiles[ACTIVE].theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    }
+    STORE.activeId = 'ismail';
+    ACTIVE = 'ismail';
+    if (STORE.profiles.ismail) STORE.profiles.ismail.theme = document.documentElement.getAttribute('data-theme') || STORE.profiles.ismail.theme || 'dark';
+    persistStore();
+    applyTheme((STORE.profiles.ismail && STORE.profiles.ismail.theme) || 'dark', false);
+    paintProfile();
+    $('#who').hidden = true;
+    await loadRoster();
+    return;
+  }
+  if (STORE.profiles[user.id]) chooseProfile(user.id);
+  await reconcile();
+}
+async function reconcile() {
+  if (!SYNC || !SYNC_USER || SYNC_USER.role !== 'athlete' || !ACTIVE) return;
+  if (!navigator.onLine) { setSyncStatus('Offline. Saved on this phone'); return; }
+  setSyncStatus('Syncing…');
+  const remote = await api('/api/state');
+  if (!remote || remote.error) { setSyncStatus('Offline. Saved on this phone'); return; }
+  const local = STORE.profiles[ACTIVE];
+  if (!remote.state) { await pushState(0, true); return; }
+  const localAt = Date.parse(local.updatedAt || 0) || 0;
+  const remoteAt = Date.parse(remote.state.updatedAt || 0) || 0;
+  if (remoteAt > localAt) { applyRemote(remote.state); setSyncStatus('Synced'); return; }
+  await pushState(remote.state.rev, true);
+}
+function applyRemote(state) {
+  syncing = true;
+  S = normalizeAthlete(state.data || {});
+  const p = STORE.profiles[ACTIVE];
+  p.data = S;
+  p.updatedAt = state.updatedAt || p.updatedAt;
+  p.syncRev = state.rev || 0;
+  if (state.theme) { p.theme = state.theme; applyTheme(state.theme, false); }
+  persistStore();
+  render();
+  paintXp();
+  syncing = false;
+}
+async function pushState(baseRev, retry) {
+  if (!SYNC || !ACTIVE || !STORE.profiles[ACTIVE] || STORE.profiles[ACTIVE].role !== 'athlete') return;
+  if (!navigator.onLine) { setSyncStatus('Offline. Saved on this phone'); return; }
+  const local = STORE.profiles[ACTIVE];
+  const res = await api('/api/state', { method: 'PUT', body: { baseRev, updatedAt: local.updatedAt, localDate: today(), theme: local.theme || 'dark', data: local.data } });
+  if (!res || (res.error && !res.conflict)) { setSyncStatus('Offline. Saved on this phone'); return; }
+  if (res.conflict && res.state) {
+    const remoteAt = Date.parse(res.state.updatedAt || 0) || 0;
+    const localAt = Date.parse(local.updatedAt || 0) || 0;
+    if (retry && localAt > remoteAt) { await pushState(res.state.rev, false); return; }
+    applyRemote(res.state);
+    setSyncStatus('Synced');
+    return;
+  }
+  if (res.error) { setSyncStatus(res.error); return; }
+  if (res.rev) local.syncRev = res.rev;
+  persistStore();
+  setSyncStatus('Synced');
+}
+function scheduleSync() {
+  if (!SYNC || !SYNC_USER || SYNC_USER.role !== 'athlete' || syncing) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { const rev = (STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].syncRev) || 0; pushState(rev, true); }, 1200);
+}
+async function loadRoster() {
+  const soon = $('#trainerSoon'), box = $('#trainerRoster');
+  if (!box) return;
+  if (!navigator.onLine) {
+    if (soon) { soon.hidden = false; soon.textContent = 'You are offline. The athletes’ progress will show when you are back online.'; }
+    return;
+  }
+  const data = await api('/api/roster');
+  if (!data || !data.athletes) {
+    if (soon) { soon.hidden = false; soon.textContent = 'Can’t reach the server. Try again when you are online.'; }
+    return;
+  }
+  if (soon) soon.hidden = true;
+  box.innerHTML = data.athletes.map(a => `<article class="trainer-card"><h2>${esc(a.name)}</h2>
+    <p><b>Level ${a.level}</b> · ${fmtInt(a.xp)} XP · ${a.streak ? a.streak + ' day streak' : 'No streak yet'}</p>
+    <p>Meals today: ${a.meals.done} of ${a.meals.total || 0}</p>
+    <p>${a.lastWorkout ? 'Last workout ' + esc(a.lastWorkout.date) + (a.lastWorkout.day ? ' · ' + esc(a.lastWorkout.day) : '') + ' · ' + a.lastWorkout.sets + ' sets' : 'No workout saved yet'}</p>
+    <p class="faint">${a.updatedAt ? 'Updated ' + esc(a.updatedAt.slice(0, 16).replace('T', ' ')) : 'Nothing synced yet'}</p></article>`).join('')
+    || '<p>No athletes have synced yet.</p>';
+}
+async function initSync() {
+  let cfg = null;
+  try {
+    const res = await fetch('sync.json', { cache: 'no-store' });
+    if (res.ok) cfg = await res.json();
+  } catch (_) { return; }
+  if (!cfg || !cfg.enabled || !cfg.workerUrl) return;
+  SYNC = { workerUrl: String(cfg.workerUrl).replace(/\/$/, '') };
+  setSyncStatus(navigator.onLine ? 'Not signed in' : 'Offline');
+  window.addEventListener('online', () => { if (SYNC_USER && SYNC_USER.role === 'athlete') reconcile(); if (SYNC_USER && SYNC_USER.role === 'trainer') loadRoster(); });
+  const token = syncToken();
+  if (token && navigator.onLine) {
+    const me = await api('/api/me');
+    if (me && me.user) { await enterAccount(me.user); return; }
+    localStorage.removeItem('peakfit.sync.token');
+  }
+  $('#who').hidden = true;
+  showSignIn();
+}
+$('#signInForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  signIn(String(fd.get('username') || ''), String(fd.get('pin') || ''));
+});
+$('#signOutBtn').addEventListener('click', () => {
+  const token = syncToken();
+  localStorage.removeItem('peakfit.sync.token');
+  SYNC_USER = null;
+  if (token) api('/api/logout', { method: 'POST' });
+  setSyncStatus('Not signed in');
+  showSignIn();
+});
+$('#whoBtn').addEventListener('click', () => { if (SYNC) showSignIn(); else showWho(); });
 $('#who').addEventListener('click', e => { const b = e.target.closest('[data-profile]'); if (b) chooseProfile(b.dataset.profile); });
 paintProfile();
 if (!ACTIVE) showWho();
@@ -1995,6 +2159,7 @@ $('#xpBar').addEventListener('click', openXp);
 $('#xpSheet').addEventListener('click', e => { if (e.target.hasAttribute('data-xp-close') || e.target.closest('[data-xp-close]')) closeXp(); });
 $('#lvlOk').addEventListener('click', () => { const el = $('#lvlUp'); el.classList.remove('show'); el.hidden = true; });
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+initSync();
 
 // Exposed for testing in the console
 window.PEAK = { interpret: t => { const r = runCommand(t); return r; }, normalise, get data() { return S; },

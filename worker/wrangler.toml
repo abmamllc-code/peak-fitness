@@ -1,0 +1,15 @@
+name = "peak-fitness-sync"
+main = "src/index.js"
+compatibility_date = "2025-11-01"
+
+# The browser origin of the GitHub Pages site. No path. Add a custom domain here too if you use one.
+# Local wrangler dev overrides this from .dev.vars.
+[vars]
+ALLOWED_ORIGINS = "https://abmamllc-code.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "peak-fitness"
+# Replace this after `npx wrangler d1 create peak-fitness` prints a real database_id.
+database_id = "00000000-0000-4000-8000-000000000001"
+migrations_dir = "migrations"
