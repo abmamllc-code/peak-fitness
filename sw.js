@@ -1,11 +1,11 @@
 /* PEAK Fitness service worker — caches the app shell for offline use. */
-const CACHE = 'peakfit-v7';
+const CACHE = 'peakfit-v8';
 const SHELL = [
   './', './index.html', './styles.css', './app.js', './manifest.webmanifest',
   './assets/peak-wordmark.png', './assets/peak-wordmark-light.png',
   './assets/icon-dumbbell-light-180.png', './assets/icon-dumbbell-light-192.png', './assets/icon-dumbbell-light-256.png', './assets/icon-dumbbell-light-512.png',
   './assets/icon-dumbbell-light-maskable-512.png', './assets/fonts/roboto-latin.woff2',
-  './assets/meals/chicken-rice.jpg', './assets/meals/snack-yogurt.jpg', './assets/meals/bananas-dates.jpg',
+  './assets/meals/chicken-potatoes.jpg', './assets/meals/snack-yogurt.jpg', './assets/meals/bananas-dates.jpg',
   './assets/meals/potatoes.jpg', './assets/meals/dinner-mince.jpg'
 ];
 self.addEventListener('install', e => {
