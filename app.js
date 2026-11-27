@@ -50,10 +50,10 @@ const I = {
 const KEY = 'peakfit.data.v1';
 /* Lean bulk, phase 1: Adnan's daily plan (weights raw / uncooked unless stated) */
 const SEED_PLAN = () => [
-  { tag: 'm1', name: 'Chicken & rice', cals: 755, p: 50, c: 93, f: 19, items: '200g chicken thighs (skinless), 110g rice (dry weight), 100g broccoli, 10g olive oil to cook' },
+  { tag: 'm1', name: 'Chicken & rice', cals: 755, p: 50, c: 93, f: 19, items: '200g boneless skinless chicken thighs, 110g rice (dry weight), 100g broccoli, 10g olive oil in the seasoning' },
   { tag: 'snack', name: 'Snack', cals: 460, p: 25, c: 63, f: 13, items: '250g full-fat Greek yogurt, 100g berries, 150g grapes, 20g honey' },
   { tag: 'pre', name: 'Pre-gym', cals: 410, p: 4, c: 108, f: 1, items: '2 bananas, 3 Medjool dates. 30–60 mins before the gym' },
-  { tag: 'post', name: 'Post-gym potatoes', cals: 250, p: 6, c: 55, f: 0, items: '320g potatoes, air-fried (few sprays of oil + seasoning). Straight after the gym' },
+  { tag: 'post', name: 'Post-gym potatoes', cals: 250, p: 6, c: 55, f: 0, items: '320g potatoes, tossed in the leftover chicken seasoning and air-fried. Straight after the gym' },
   { tag: 'dinner', name: 'Dinner', cals: 1120, p: 53, c: 119, f: 45, items: '150g rice (dry weight), 150g beef mince (10% fat), 2 eggs, 20g olive oil or butter (cook with it / drizzle over rice)' },
 ].map(m => Object.assign({ id: uid() }, m));
 const SEED_TARGETS = () => ({ kcal: 3000, p: 130, c: 440, f: 80 });
@@ -102,6 +102,17 @@ function load() {
       out.plan = b.plan;
       Object.keys(out.days).forEach(k => { const ms = out.days[k] && out.days[k].meals; if (untouched(ms) && !ms.some(m => m.done)) delete out.days[k]; });
     }
+    // Bring the default cook notes in line with the air-fryer method, and leave anything edited by hand.
+    const cookCopy = {
+      m1: ['200g chicken thighs (skinless), 110g rice (dry weight), 100g broccoli, 10g olive oil to cook', '200g boneless skinless chicken thighs, 110g rice (dry weight), 100g broccoli, 10g olive oil in the seasoning'],
+      post: ['320g potatoes, air-fried (few sprays of oil + seasoning). Straight after the gym', '320g potatoes, tossed in the leftover chicken seasoning and air-fried. Straight after the gym'],
+    };
+    const patchMeals = ms => {
+      if (!Array.isArray(ms)) return;
+      ms.forEach(m => { const fix = m && cookCopy[m.tag]; if (fix && m.items === fix[0]) m.items = fix[1]; });
+    };
+    patchMeals(out.plan);
+    Object.keys(out.days).forEach(k => patchMeals(out.days[k] && out.days[k].meals));
     return out;
   } catch (e) { console.warn('PEAK: could not read saved data', e); return blank(); }
 }
@@ -251,11 +262,12 @@ const MEAL_GUIDES = {
     photo: 'assets/meals/chicken-rice.jpg', alt: 'Chicken, white rice and broccoli',
     credit: 'Roman Odintsov', source: 'https://www.pexels.com/photo/rice-toppings-and-french-fries-on-the-table-5836771/', licence: 'Pexels Licence',
     portions: '4 portions per cook', batch: '800g chicken thighs, 440g dry rice, 400g broccoli, 40g olive oil',
-    why: 'This meal is every day. Four portions is one pan of thighs and one pot of rice, small enough to cool within an hour. Cook it twice a week and the spare portion in the freezer covers the seventh day.',
+    why: 'This meal is every day. Four portions is one bowl of thighs and one pot of rice, small enough to cool within an hour. Cook it twice a week and the spare portion in the freezer covers the seventh day.',
     steps: [
-      ['Weigh the batch', '800g skinless chicken thighs, 440g dry rice, 400g broccoli and 40g olive oil. That is four plates of the usual 200g chicken, 110g rice, 100g broccoli and 10g oil (755 kcal each). A 1kg pack leaves 200g: freeze that raw for the next cook.'],
+      ['Weigh the batch', '800g boneless skinless chicken thighs, 440g dry rice, 400g broccoli and 40g olive oil. That is four plates of the usual 200g chicken, 110g rice, 100g broccoli and 10g oil (755 kcal each). A 1kg pack leaves 200g: freeze that raw for the next cook.'],
       ['Cook the rice', 'Rinse the rice until the water runs mostly clear. Put it in a pot with 660ml water, bring it to the boil, then cover and simmer on low for about 12 minutes. Take it off the heat and leave it covered for 5 minutes. Spread it on a tray so it stops steaming.'],
-      ['Cook the chicken', 'Pat the thighs dry and season them. Heat the oven to 200°C, toss the thighs with the oil and roast for about 22–28 minutes, or brown them in a pan for about 6–8 minutes a side. They are done when the thickest part is 75°C and the juices run clear, with no pink left. Rest them for a few minutes.'],
+      ['Season the chicken', 'Put the thighs in a glass bowl. Add smoked paprika, salt, garlic powder, onion powder, mixed herbs, rosemary and the 40g olive oil, and mix well so every piece is coated. Leave the bowl as it is when the chicken comes out: the potatoes use what is left.'],
+      ['Air fry the chicken', 'Heat the air fryer to 200°C. Cook the thighs for 15 minutes on the first side, flip them, then another 5–10 minutes, until the thickest piece is 75°C in the middle. Rest for 5 minutes, then slice.'],
       ['Cook the broccoli', 'The broccoli is bought frozen. Steam it, or microwave it with a splash of water, for about 4–5 minutes until tender. It softens again when you reheat it, so stop while it is still bright.'],
       ['Portion it', 'Four boxes: chicken, rice and broccoli in each. Eat one today.'],
       ['Cool and freeze the rest', 'Spread the other boxes out and get them into the fridge within an hour. Tomorrow’s box can stay in the fridge. Freeze the other two the same day, lids on, labelled with the date. Flat boxes freeze faster. They keep for about a month.'],
@@ -310,14 +322,14 @@ const MEAL_GUIDES = {
     photo: 'assets/meals/potatoes.jpg', alt: 'Seasoned potato chunks from an air fryer',
     credit: 'Vimkay', source: 'https://commons.wikimedia.org/wiki/File:Potatoes_coated_with_spices_and_fried_in_an_air-fryer.jpg', licence: 'CC BY-SA 4.0',
     portions: '3 portions per cook', batch: '960g potatoes',
-    why: 'This is every day, straight after the gym. Three portions is one parboil, and it matches how long cooked potatoes keep in the fridge. A 2.5kg bag is about a week (320g a day), so two cooks cover it.',
+    why: 'This is every day, straight after the gym. Three portions is one air-fryer batch, and it matches how long cooked potatoes keep in the fridge. A 2.5kg bag is about a week (320g a day), so two cooks cover it. Cook them in the same session as the chicken so they pick up the leftover seasoning.',
     steps: [
       ['Weigh and cut', '960g potatoes, about three of the usual 320g portions (250 kcal each). Wash them, cut even 3cm chunks, and leave the skins on.'],
-      ['Parboil', 'Boil for about 8 minutes until the outside is just tender. Drain well and let them steam dry in the colander. That dry edge is what goes crisp in the air fryer.'],
-      ['The portion you are eating now', 'Heat the air fryer to 200°C. Toss one portion with a few sprays of 1-cal oil and the potato seasoning. Cook about 15–20 minutes, shaking halfway, until the chunks are crisp and piping hot in the middle.'],
+      ['Use the chicken bowl', 'While the chicken is in the air fryer, put the chunks in the same glass bowl. Don’t add more seasoning or oil. The leftover marinade is enough. Toss until the chunks are coated.'],
+      ['Air fry the potatoes', 'When the chicken comes out, or in the other drawer if the fryer has one, air fry the chunks at 200°C for about 20–25 minutes. Shake halfway. They are done when they are golden and a knife slides through the middle.'],
       ['Cool the other two', 'Spread them out and get them cold within an hour. Fridge for up to 3 days, or freeze them flat, labelled, for about a month.'],
       ['Freezer or fridge to plate', 'From the fridge: same air fry, 200°C, 15–20 minutes, until piping hot. From the freezer: add about 8–10 minutes, and don’t let them sit half-thawed on the side. Microwave defrost only if they go straight into the air fryer.'],
-      ['One portion from raw', 'If you didn’t batch: 320g chunks, 200°C, about 22–28 minutes, shake halfway. No parboil needed for a single portion.'],
+      ['One portion from raw', 'If you didn’t batch: 320g chunks, tossed in whatever is left in the chicken bowl, 200°C for about 20–25 minutes, shake halfway.'],
     ],
     safety: [
       'Cool cooked potatoes within an hour. Eat fridge portions within 3 days.',
@@ -433,9 +445,9 @@ function refreshMealSummary() {
 /* ================= Shopping ================= */
 const SHOP = {
   month: [
-    { g: 'Meat', note: 'Freeze in daily bags: 200g chicken, 150g mince', items: [['chicken', 'Chicken thighs, skinless', '6 × 1kg'], ['mince', 'Beef mince, 10% fat', '9 × 500g']] },
+    { g: 'Meat', note: 'Freeze in daily bags: 200g chicken, 150g mince', items: [['chicken', 'Chicken thighs, boneless and skinless', '6 × 1kg'], ['mince', 'Beef mince, 10% fat', '9 × 500g']] },
     { g: 'Frozen', items: [['berries', 'Mixed berries', '4 × 750g'], ['broccoli', 'Broccoli', '3 × 1kg']] },
-    { g: 'Cupboard', items: [['rice', 'Rice', '10kg bag'], ['dates', 'Medjool dates', '~2kg (90)'], ['honey', 'Honey', '2 × 340g'], ['oil', 'Olive oil', '2 × 500ml'], ['spray', '1-cal spray oil', '1 can'], ['seasoning', 'Potato seasoning', '1–2 jars'], ['butter', 'Butter (optional)', '3 × 250g']] },
+    { g: 'Cupboard', items: [['rice', 'Rice', '10kg bag'], ['dates', 'Medjool dates', '~2kg (90)'], ['honey', 'Honey', '2 × 340g'], ['oil', 'Olive oil', '2 × 500ml'], ['spray', '1-cal spray oil', '1 can'], ['seasoning', 'Smoked paprika, garlic powder, onion powder, mixed herbs, rosemary', '1 of each'], ['butter', 'Butter (optional)', '3 × 250g']] },
   ],
   week: [['bananas', 'Bananas', '14–15'], ['grapes', 'Grapes', '~1.1kg'], ['yogurt', 'Greek yogurt, full-fat', '2 × 1kg'], ['eggs', 'Eggs', '15 tray'], ['potatoes', 'Potatoes', '2.5kg bag']],
 };
