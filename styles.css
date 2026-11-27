@@ -583,9 +583,10 @@ body.guiding .rest-t{font-size:26px;font-weight:800}
 #view-meals .check svg,#view-shop .check svg{width:26px;height:26px}
 #view-meals .icon-btn{width:56px;height:56px}
 #view-meals .pill,#view-shop .pill,#view-shop .chip{min-height:56px}
+#view-meals .item{position:relative}
 #view-meals .item-head{min-height:84px;padding:14px}
-.info-btn{display:grid;place-items:center;width:72px;height:72px;margin:0 14px 14px auto;border-radius:999px;background:#0066FF;color:#fff}
-.info-btn span{font-size:40px;font-weight:800;line-height:1;letter-spacing:0;text-transform:none}
+.info-btn{position:absolute;top:0;right:0;z-index:2;display:grid;place-items:center;width:44px;height:44px;margin:0;padding:0;background:transparent}
+.info-btn span{width:32px;height:32px;border-radius:999px;display:grid;place-items:center;border:1.5px solid #0066FF;background:rgba(0,102,255,.16);color:#0066FF;font-size:17px;font-weight:800;line-height:1;letter-spacing:0;text-transform:none}
 .eye-pop{position:fixed;inset:0;z-index:70}
 .eye-pop[hidden]{display:none}
 .eye-scrim{position:absolute;inset:0;background:rgba(0,0,0,.62);opacity:0;transition:opacity .32s var(--ease)}
