@@ -277,6 +277,7 @@ function bootProfiles() {
   if (raw) {
     try { STORE = JSON.parse(raw); } catch (_) { STORE = null; }
   }
+  let dirty = false;
   if (!STORE || !STORE.profiles || !STORE.profiles.adnan) {
     let adnan = blank(), theme = 'dark';
     try {
@@ -287,15 +288,28 @@ function bootProfiles() {
     STORE = {
       version: 1,
       activeId: null,
+      picked: false,
       profiles: {
         adnan: profileShell('adnan', 'Adnan', 'athlete', theme, adnan),
         adam: profileShell('adam', 'Adam', 'athlete', 'dark', blank()),
         ismail: profileShell('ismail', 'Ismail', 'trainer', 'dark'),
       },
     };
-    persistStore();
+    dirty = true;
   }
-  ACTIVE = STORE.activeId && STORE.profiles[STORE.activeId] ? STORE.activeId : null;
+  if (!STORE.profiles.adam) { STORE.profiles.adam = profileShell('adam', 'Adam', 'athlete', 'dark', blank()); dirty = true; }
+  if (!STORE.profiles.ismail) { STORE.profiles.ismail = profileShell('ismail', 'Ismail', 'trainer', 'dark'); dirty = true; }
+  if (STORE.profiles.ismail && STORE.profiles.ismail.role !== 'trainer') { STORE.profiles.ismail.role = 'trainer'; dirty = true; }
+  if (STORE.profiles.ismail && STORE.profiles.ismail.data) { delete STORE.profiles.ismail.data; dirty = true; }
+  if (STORE.activeId && STORE.profiles[STORE.activeId]) {
+    if (!STORE.picked) { STORE.picked = true; dirty = true; }
+  } else if (STORE.activeId || STORE.picked) {
+    STORE.activeId = null;
+    STORE.picked = false;
+    dirty = true;
+  }
+  ACTIVE = STORE.picked && STORE.activeId ? STORE.activeId : null;
+  if (dirty) persistStore();
 }
 function load() {
   bootProfiles();
@@ -1202,7 +1216,8 @@ function renderProgress() {
     </div></div></div></div>`;
 
   $('#view-progress').innerHTML = hintSlot('progress') + seg + bwCard + strCard + measCard + `
-    <div class="backup"><button class="pill pill-sm pill-ghost" data-act="export">Back up data</button><button class="pill pill-sm pill-ghost" data-act="import">Restore backup</button></div>`;
+    <div class="backup"><button class="pill pill-sm pill-ghost" data-act="export">Back up data</button><button class="pill pill-sm pill-ghost" data-act="import">Restore backup</button></div>
+    <div class="device-settings"><span>Settings</span><button type="button" class="switch-link" data-act="switch-person">Switch person</button></div>`;
 }
 
 function render() {
@@ -1375,6 +1390,7 @@ views.addEventListener('click', e => {
       if (n && !confirm(`Remove ${t} and its ${n} entr${n === 1 ? 'y' : 'ies'}?`)) break;
       S.measure.types = S.measure.types.filter(x => x !== t); S.measure.entries = S.measure.entries.filter(x => x.type !== t); U.measType = null; commit(); break;
     }
+    case 'switch-person': askSwitch(); break;
     case 'export': exportData(); break;
     case 'import': importData(); break;
   }
@@ -1937,53 +1953,63 @@ function profileInitials(name) {
   if (name === 'Ismail') return 'Is';
   return String(name || '?').slice(0, 2);
 }
-function paintProfile() {
-  const btn = $('#whoBtn'); if (!btn) return;
+function isTrainer() {
   const p = ACTIVE && STORE.profiles[ACTIVE];
-  const trainer = !!(p && p.role === 'trainer');
-  document.body.classList.toggle('is-trainer', trainer);
-  const panel = $('#trainer'); if (panel) panel.hidden = !trainer;
-  if (!p) { btn.hidden = true; return; }
-  btn.hidden = false;
-  btn.textContent = profileInitials(p.name);
-  btn.setAttribute('aria-label', 'Switch profile, ' + p.name + (p.role === 'trainer' ? ', trainer' : ''));
+  return !!(p && p.role === 'trainer');
 }
-function showWho() {
+function paintProfile() {
+  const trainer = isTrainer();
+  document.body.classList.toggle('is-trainer', trainer);
+  const panel = $('#trainer');
+  if (panel) panel.hidden = !trainer;
+}
+function showWho(opts) {
   const root = $('#who'); if (!root) return;
-  const order = ['adnan', 'adam', 'ismail'];
-  $('#whoCards').innerHTML = order.map(id => {
+  $('#whoCards').innerHTML = ['adnan', 'adam'].map(id => {
     const p = STORE.profiles[id];
-    const sub = p.role === 'trainer' ? 'Trainer' : 'Athlete';
-    return `<button type="button" class="who-card" data-profile="${id}"><span class="who-av">${profileInitials(p.name)}</span><span class="who-copy"><b>${esc(p.name)}</b><span>${sub}</span></span></button>`;
+    return `<button type="button" class="who-card" data-profile="${id}"><span class="who-av">${profileInitials(p.name)}</span><span class="who-copy"><b>${esc(p.name)}</b></span></button>`;
   }).join('');
+  const cancel = $('#whoCancel');
+  if (cancel) cancel.hidden = !(opts && opts.cancel && STORE.picked);
+  $('#signIn').hidden = true;
+  document.body.classList.remove('gate-wait');
   root.hidden = false;
 }
 function chooseProfile(id) {
   const next = STORE.profiles[id]; if (!next) return;
-  if (ACTIVE && STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].role === 'athlete') {
+  if (ACTIVE && ACTIVE !== id && STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].role === 'athlete') {
     STORE.profiles[ACTIVE].data = S;
     STORE.profiles[ACTIVE].theme = document.documentElement.getAttribute('data-theme') || 'dark';
     STORE.profiles[ACTIVE].updatedAt = new Date().toISOString();
   }
   stopRest();
+  STORE.picked = true;
   STORE.activeId = id;
   ACTIVE = id;
   applyTheme(next.theme || 'dark', false);
+  $('#who').hidden = true;
+  $('#signIn').hidden = true;
+  document.body.classList.remove('gate-wait');
   if (next.role === 'trainer') {
     persistStore();
     paintProfile();
-    $('#who').hidden = true;
+    renderTrainer();
     return;
   }
+  document.body.classList.remove('is-trainer');
+  const panel = $('#trainer'); if (panel) panel.hidden = true;
   S = normalizeAthlete(next.data || {});
   next.data = S;
   persistStore();
   paintProfile();
-  $('#who').hidden = true;
   U.mealsDate = today();
   U.gymDate = today();
   setTab('meals', true);
   paintXp();
+}
+function askSwitch() {
+  if (SYNC) showSignIn({ cancel: true });
+  else showWho({ cancel: true });
 }
 let SYNC = null, SYNC_USER = null, syncing = false, syncTimer = null;
 function setSyncStatus(text) {
@@ -2005,12 +2031,15 @@ async function api(path, opts) {
     return data;
   } catch (_) { return null; }
 }
-function showSignIn() {
+function showSignIn(opts) {
   const form = $('#signIn'); if (!form) return;
   $('#who').hidden = true;
   form.hidden = false;
+  document.body.classList.remove('gate-wait');
   const out = $('#signOutBtn');
-  if (out) out.hidden = !SYNC_USER;
+  if (out) out.hidden = true;
+  const cancel = $('#signCancel');
+  if (cancel) cancel.hidden = !(opts && opts.cancel && STORE.picked);
   const err = $('#signInErr'); if (err) err.textContent = '';
 }
 async function signIn(username, pin) {
@@ -2033,14 +2062,16 @@ async function enterAccount(user) {
       STORE.profiles[ACTIVE].data = S;
       STORE.profiles[ACTIVE].theme = document.documentElement.getAttribute('data-theme') || 'dark';
     }
+    STORE.picked = true;
     STORE.activeId = 'ismail';
     ACTIVE = 'ismail';
     if (STORE.profiles.ismail) STORE.profiles.ismail.theme = document.documentElement.getAttribute('data-theme') || STORE.profiles.ismail.theme || 'dark';
     persistStore();
     applyTheme((STORE.profiles.ismail && STORE.profiles.ismail.theme) || 'dark', false);
-    paintProfile();
     $('#who').hidden = true;
-    await loadRoster();
+    document.body.classList.remove('gate-wait');
+    paintProfile();
+    renderTrainer();
     return;
   }
   if (STORE.profiles[user.id]) chooseProfile(user.id);
@@ -2096,44 +2127,151 @@ function scheduleSync() {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => { const rev = (STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].syncRev) || 0; pushState(rev, true); }, 1200);
 }
-async function loadRoster() {
-  const soon = $('#trainerSoon'), box = $('#trainerRoster');
+function dayTitle(day) { return DAYNAME[day] || day || 'Workout'; }
+function prettyDate(iso) {
+  const s = String(iso || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? shortDate(s) : '';
+}
+function mealsDone(days, date) {
+  const meals = days && days[date] && Array.isArray(days[date].meals) ? days[date].meals : [];
+  return meals.length > 0 && meals.every(m => m && m.done);
+}
+function workoutList(workouts) {
+  if (!workouts || typeof workouts !== 'object') return [];
+  const out = [];
+  Object.keys(workouts).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse().forEach(date => {
+    const w = workouts[date];
+    if (!w || !Array.isArray(w.exercises)) return;
+    let sets = 0, volume = 0;
+    w.exercises.forEach(ex => (ex.sets || []).forEach(s => {
+      if (!s || (!s.done && !(num(s.weight) > 0))) return;
+      sets++;
+      volume += (num(s.reps) || 0) * (num(s.weight) || 0);
+    }));
+    if (sets || w.end) out.push({ date, day: w.day || '', sets, volume: Math.round(volume) });
+  });
+  return out.slice(0, 4);
+}
+function summarizeAthlete(raw) {
+  const data = normalizeAthlete(raw || {});
+  const xp = data.xp.total || 0;
+  const date = today();
+  const dayMeals = (data.days[date] && data.days[date].meals) || [];
+  let streak = 0, cursor = mealsDone(data.days, date) ? date : addDays(date, -1);
+  while (cursor && mealsDone(data.days, cursor) && streak < 60) { streak++; cursor = addDays(cursor, -1); }
+  const workouts = workoutList(data.workouts);
+  const bw = sortByDate(data.bodyweight || []);
+  const last = bw.length ? bw[bw.length - 1] : null;
+  const anyMeal = Object.keys(data.days || {}).some(d => ((data.days[d] && data.days[d].meals) || []).some(m => m && m.done));
+  return {
+    level: levelState(xp).level, xp, streak,
+    meals: { done: dayMeals.filter(m => m && m.done).length, total: dayMeals.length },
+    workouts, bodyweight: last && num(last.value) > 0 ? { value: last.value, date: last.date } : null,
+    logged: xp > 0 || anyMeal || workouts.length > 0 || !!(last && num(last.value) > 0),
+  };
+}
+function localPeople() {
+  return ['adnan', 'adam'].map(id => Object.assign({ id, name: STORE.profiles[id].name }, summarizeAthlete(STORE.profiles[id].data)));
+}
+function rosterLogged(a) {
+  if (!a) return false;
+  const meals = a.meals || {};
+  return !!(a.xp > 0 || a.streak || meals.done || (a.workouts && a.workouts.length) || a.bodyweight || (a.lastWorkout && a.lastWorkout.sets));
+}
+function trainerCard(a) {
+  const meals = a.meals || {};
+  const mealLine = meals.total ? meals.done + ' of ' + meals.total + ' meals ticked today' : 'No meals ticked today';
+  const list = (a.workouts && a.workouts.length) ? a.workouts : (a.lastWorkout ? [a.lastWorkout] : []);
+  const setsLabel = n => n === 1 ? '1 set' : (n || 0) + ' sets';
+  const wos = list.map(w => `<li><b>${esc(prettyDate(w.date) || w.date || '')}</b> · ${esc(dayTitle(w.day))} · ${setsLabel(w.sets || 0)} · ${fmtInt(w.volume || 0)} kg</li>`).join('');
+  const bw = a.bodyweight ? `<p>Body weight ${fmt(a.bodyweight.value)} kg${a.bodyweight.date ? ' · ' + esc(prettyDate(a.bodyweight.date)) : ''}</p>` : '';
+  return `<article class="trainer-card"><h2>${esc(a.name)}</h2>
+    <p><b>Level ${a.level || 1}</b> · ${fmtInt(a.xp || 0)} XP</p>
+    <p>${a.streak ? a.streak + ' day streak' : 'No streak yet'}</p>
+    <p>${mealLine}</p>
+    ${wos ? `<p class="trainer-k">Workouts</p><ul class="trainer-wos">${wos}</ul>` : '<p>No workouts saved</p>'}
+    ${bw}</article>`;
+}
+function quietCard(name, text) {
+  return `<article class="trainer-card"><h2>${esc(name)}</h2><p>${text}</p></article>`;
+}
+function paintLocalRoster() {
+  const note = $('#trainerNote'), box = $('#trainerRoster');
   if (!box) return;
-  if (!navigator.onLine) {
-    if (soon) { soon.hidden = false; soon.textContent = 'You are offline. The athletes’ progress will show when you are back online.'; }
+  const people = localPeople();
+  if (!people.some(p => p.logged)) {
+    if (note) { note.hidden = false; note.textContent = 'Nothing to track on this phone yet. Adnan’s and Adam’s progress fills in here once sync is on.'; }
+    box.innerHTML = '';
     return;
   }
+  if (note) { note.hidden = false; note.textContent = 'Showing what is saved on this phone. The other person’s progress fills in once sync is on.'; }
+  box.innerHTML = people.map(p => p.logged ? trainerCard(p) : quietCard(p.name, 'Nothing on this phone yet. This fills in once sync is on.')).join('');
+}
+function renderTrainer() {
+  const panel = $('#trainer'); if (!panel) return;
+  document.body.classList.add('is-trainer');
+  document.body.classList.remove('gate-wait');
+  panel.hidden = false;
+  $('#who').hidden = true;
+  $('#signIn').hidden = true;
+  if (SYNC && SYNC_USER && SYNC_USER.role === 'trainer' && navigator.onLine) { loadRoster(); return; }
+  paintLocalRoster();
+}
+async function loadRoster() {
+  const note = $('#trainerNote'), box = $('#trainerRoster');
+  if (!box) return;
+  if (!navigator.onLine) { paintLocalRoster(); return; }
   const data = await api('/api/roster');
   if (!data || !data.athletes) {
-    if (soon) { soon.hidden = false; soon.textContent = 'Can’t reach the server. Try again when you are online.'; }
+    if (note) { note.hidden = false; note.textContent = 'Can’t reach the server. This fills in once you are back online.'; }
+    const people = localPeople();
+    box.innerHTML = people.some(p => p.logged) ? people.map(p => p.logged ? trainerCard(p) : quietCard(p.name, 'Nothing on this phone yet.')).join('') : '';
     return;
   }
-  if (soon) soon.hidden = true;
-  box.innerHTML = data.athletes.map(a => `<article class="trainer-card"><h2>${esc(a.name)}</h2>
-    <p><b>Level ${a.level}</b> · ${fmtInt(a.xp)} XP · ${a.streak ? a.streak + ' day streak' : 'No streak yet'}</p>
-    <p>Meals today: ${a.meals.done} of ${a.meals.total || 0}</p>
-    <p>${a.lastWorkout ? 'Last workout ' + esc(a.lastWorkout.date) + (a.lastWorkout.day ? ' · ' + esc(a.lastWorkout.day) : '') + ' · ' + a.lastWorkout.sets + ' sets' : 'No workout saved yet'}</p>
-    <p class="faint">${a.updatedAt ? 'Updated ' + esc(a.updatedAt.slice(0, 16).replace('T', ' ')) : 'Nothing synced yet'}</p></article>`).join('')
-    || '<p>No athletes have synced yet.</p>';
+  const athletes = data.athletes.map(a => Object.assign({}, a, { logged: rosterLogged(a) }));
+  if (!athletes.some(a => a.logged)) {
+    if (note) { note.hidden = false; note.textContent = 'Nothing synced yet. This fills in once Adnan and Adam sign in on their phones.'; }
+    box.innerHTML = '';
+    return;
+  }
+  if (note) note.hidden = true;
+  box.innerHTML = athletes.map(a => a.logged ? trainerCard(a) : quietCard(a.name, 'Nothing synced yet.')).join('');
+}
+function rememberOffline() {
+  if (!STORE.picked || !ACTIVE || !STORE.profiles[ACTIVE]) return false;
+  const p = STORE.profiles[ACTIVE];
+  SYNC_USER = { id: p.id, username: p.id, name: p.name, role: p.role };
+  setSyncStatus('Offline. Saved on this phone');
+  if (p.role === 'trainer') renderTrainer();
+  return true;
 }
 async function initSync() {
   let cfg = null;
   try {
     const res = await fetch('sync.json', { cache: 'no-store' });
     if (res.ok) cfg = await res.json();
-  } catch (_) { return; }
-  if (!cfg || !cfg.enabled || !cfg.workerUrl) return;
+  } catch (_) {}
+  if (!cfg || !cfg.enabled || !cfg.workerUrl) {
+    if (!STORE.picked) showWho();
+    return;
+  }
   SYNC = { workerUrl: String(cfg.workerUrl).replace(/\/$/, '') };
-  setSyncStatus(navigator.onLine ? 'Not signed in' : 'Offline');
-  window.addEventListener('online', () => { if (SYNC_USER && SYNC_USER.role === 'athlete') reconcile(); if (SYNC_USER && SYNC_USER.role === 'trainer') loadRoster(); });
+  window.addEventListener('online', () => {
+    if (SYNC_USER && SYNC_USER.role === 'athlete') reconcile();
+    if (SYNC_USER && SYNC_USER.role === 'trainer') loadRoster();
+  });
   const token = syncToken();
+  if (token && !navigator.onLine) {
+    if (!rememberOffline() && !STORE.picked) showSignIn();
+    return;
+  }
   if (token && navigator.onLine) {
     const me = await api('/api/me');
     if (me && me.user) { await enterAccount(me.user); return; }
-    localStorage.removeItem('peakfit.sync.token');
+    if (me && me.status === 401) localStorage.removeItem('peakfit.sync.token');
+    else if (rememberOffline()) return;
   }
-  $('#who').hidden = true;
-  showSignIn();
+  if (!STORE.picked) showSignIn();
 }
 $('#signInForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -2146,13 +2284,21 @@ $('#signOutBtn').addEventListener('click', () => {
   SYNC_USER = null;
   if (token) api('/api/logout', { method: 'POST' });
   setSyncStatus('Not signed in');
-  showSignIn();
+  showSignIn({ cancel: true });
 });
-$('#whoBtn').addEventListener('click', () => { if (SYNC) showSignIn(); else showWho(); });
 $('#who').addEventListener('click', e => { const b = e.target.closest('[data-profile]'); if (b) chooseProfile(b.dataset.profile); });
-paintProfile();
-if (!ACTIVE) showWho();
-else applyTheme((STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].theme) || 'dark', false);
+$('#whoTrainer').addEventListener('click', () => chooseProfile('ismail'));
+$('#whoCancel').addEventListener('click', () => { $('#who').hidden = true; });
+$('#signCancel').addEventListener('click', () => {
+  $('#signIn').hidden = true;
+  if (isTrainer()) renderTrainer();
+});
+$('#trainerSwitch').addEventListener('click', askSwitch);
+if (STORE.picked) {
+  applyTheme((STORE.profiles[ACTIVE] && STORE.profiles[ACTIVE].theme) || 'dark', false);
+  paintProfile();
+  if (isTrainer()) renderTrainer();
+} else document.body.classList.add('gate-wait');
 paintRest();
 paintXp();
 $('#xpBar').addEventListener('click', openXp);

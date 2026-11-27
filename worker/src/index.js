@@ -174,9 +174,14 @@ function summarize(data, localDate) {
   const days = data.days && typeof data.days === 'object' ? data.days : {};
   const meals = localDate && days[localDate] && Array.isArray(days[localDate].meals) ? days[localDate].meals : [];
   let streak = 0;
-  let cursor = localDate;
+  let cursor = dayComplete(days, localDate) ? localDate : prevDate(localDate);
   while (cursor && dayComplete(days, cursor) && streak < 60) { streak++; cursor = prevDate(cursor); }
-  return { level: levelFrom(xp), xp, streak, meals: { done: meals.filter(m => m && m.done).length, total: meals.length }, lastWorkout: lastWorkout(data.workouts) };
+  const workouts = recentWorkouts(data.workouts);
+  return {
+    level: levelFrom(xp), xp, streak,
+    meals: { done: meals.filter(m => m && m.done).length, total: meals.length },
+    workouts, lastWorkout: workouts[0] || null, bodyweight: latestWeight(data.bodyweight),
+  };
 }
 
 function dayComplete(days, date) {
@@ -185,6 +190,7 @@ function dayComplete(days, date) {
 }
 
 function prevDate(iso) {
+  if (!iso || typeof iso !== 'string') return '';
   const [y, m, d] = iso.split('-').map(Number);
   if (!y || !m || !d) return '';
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -192,8 +198,9 @@ function prevDate(iso) {
   return dt.toISOString().slice(0, 10);
 }
 
-function lastWorkout(workouts) {
-  if (!workouts || typeof workouts !== 'object') return null;
+function recentWorkouts(workouts) {
+  if (!workouts || typeof workouts !== 'object') return [];
+  const out = [];
   const dates = Object.keys(workouts).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort().reverse();
   for (const date of dates) {
     const w = workouts[date];
@@ -204,9 +211,18 @@ function lastWorkout(workouts) {
       sets++;
       volume += (Number(s.reps) || 0) * (Number(s.weight) || 0);
     }));
-    if (sets || w.end) return { date, day: w.day || '', sets, volume: Math.round(volume) };
+    if (sets || w.end) out.push({ date, day: w.day || '', sets, volume: Math.round(volume) });
+    if (out.length >= 4) break;
   }
-  return null;
+  return out;
+}
+
+function latestWeight(list) {
+  if (!Array.isArray(list)) return null;
+  const rows = list.filter(b => b && b.date && Number(b.value) > 0).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  if (!rows.length) return null;
+  const last = rows[rows.length - 1];
+  return { value: Number(last.value), date: String(last.date).slice(0, 10) };
 }
 
 function xpNeed(level) { return Math.round(25 * Math.pow(Math.max(1, level), 1.55)); }
