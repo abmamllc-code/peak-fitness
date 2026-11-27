@@ -44,7 +44,6 @@ const I = {
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
   scale: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 9.5a4 4 0 0 1 6 0l-2 2.5"/></svg>',
   bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.2 11.1c.5.4.9 1 .9 1.6V17h4.6v-1.3c0-.6.4-1.2.9-1.6A6 6 0 0 0 12 3z"/></svg>',
-  eye: '<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
 };
 
 /* ================= Store ================= */
@@ -670,7 +669,7 @@ function modeSeg() {
 function renderMeals() {
   const date = U.mealsDate, meals = getMeals(date);
   const rows = meals.map(m => `<div class="item${m.done ? ' done' : ''}${isOpen(m.id)}" data-meal="${m.id}">${mealHead(m)}
-      <button type="button" class="eye-btn" data-act="eye" aria-label="Open ${esc(m.name)}">${I.eye}<span>Eye</span></button>
+      <button type="button" class="info-btn" data-act="eye" aria-label="Info, ${esc(m.name)}"><span>i</span></button>
       <div class="expand"><div class="expand-in"><div class="expand-body">
         ${mealExtra(m)}
         <div class="form-grid">
