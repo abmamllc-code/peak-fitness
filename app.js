@@ -58,15 +58,126 @@ const SEED_PLAN = () => [
 ].map(m => Object.assign({ id: uid() }, m));
 const SEED_TARGETS = () => ({ kcal: 3000, p: 130, c: 440, f: 80 });
 
-/* Gym split: Push, Pull, Legs, Rest, repeat */
+/* Push / Pull / Legs. One pass every four days, so each session carries a full dose for that pattern.
+   Compounds first, then the muscles that grow from extra volume. Rest is longer on the heavy lifts. */
 const CYCLE = ['push', 'pull', 'legs', 'rest'];
 const DAYNAME = { push: 'Push', pull: 'Pull', legs: 'Legs', rest: 'Rest' };
-const TX = (name, sets, reps, rest, note) => ({ id: uid(), name, sets, reps, rest, note: note || '' });
+const SPLIT = {
+  push: { title: 'PUSH', muscles: 'Chest, shoulders, triceps', line: 'Press first. Then the shoulders and the arms.' },
+  pull: { title: 'PULL', muscles: 'Back, rear delts, biceps', line: 'A heavy pull, then width, thickness and arms.' },
+  legs: { title: 'LEGS', muscles: 'Quads, hamstrings, glutes, calves, core', line: 'Squat, hinge, then the legs and the trunk.' },
+};
+const EX = (name, sets, reps, repText, rest, muscles, pose, how, cues, mistakes, easier, harder, alias) =>
+  ({ name, sets, reps, repText, rest, muscles, pose, how, cues, mistakes, easier, harder, alias: alias || [] });
+const LIB = {
+  bench: EX('Barbell Bench Press', 4, 8, '6–8', 180, 'Chest, front delts, triceps', 'bench',
+    ['Lie on the bench, feet flat, eyes under the bar. Grip just outside the shoulders and pull the shoulder blades down into the bench.', 'Unrack, lower the bar to the lower chest, and press up until the arms are straight. Keep the wrists stacked over the elbows.', 'Breathe in on the way down and drive the breath out as you press.'],
+    ['Shoulder blades stay pinched.', 'Bar path is a slight arc, not straight out over the face.', 'Heels stay down.'],
+    ['Bouncing the bar off the chest.', 'Flaring the elbows straight out.', 'Lifting the hips to finish the rep.'],
+    'Dumbbell bench press, or a machine chest press.', 'Pause for a second on the chest, or add a fifth set.'),
+  ohp: EX('Seated Overhead Press', 3, 8, '6–8', 180, 'Shoulders, triceps', 'ohp',
+    ['Sit tall on a bench with a backrest, feet flat. Hold the bar on the front of the shoulders, elbows slightly in front of the bar.', 'Press it overhead until the biceps are by the ears, then lower it under control to the shoulders.', 'Breath in at the bottom, brace, and breathe out as the bar passes the head.'],
+    ['Ribs stay down. Don’t lean back to make the lift a chest press.', 'Head comes through at the top so the bar sits over the shoulders.', 'Grip is just outside the shoulders.'],
+    ['Overarching the lower back.', 'Pressing the bar out in front of you.', 'Cutting the range short of lockout.'],
+    'Seated dumbbell press.', 'Stand up and press from the rack, or slow the lowering to three seconds.'),
+  incline: EX('Incline Dumbbell Press', 3, 10, '8–10', 120, 'Upper chest, front delts', 'incline',
+    ['Set the bench around 30 degrees. Dumbbells start just outside the upper chest, palms facing forward.', 'Press up and slightly in until the arms are straight, then lower until you feel a stretch across the chest.', 'Breathe in as the weights come down and out as you press.'],
+    ['Keep the same angle the whole set. Don’t turn it into a flat press.', 'Elbows stay about 45 degrees from the body.', 'Control the bottom. Don’t crash the bells down.'],
+    ['Bench too steep, so the shoulders take over.', 'Bells drifting toward the face.', 'Bouncing out of the bottom.'],
+    'Incline machine press, or a lighter pair of bells.', 'Pause at the bottom, or a slower lowering.', ['Smith Machine Incline Bench Press']),
+  raise: EX('Dumbbell Lateral Raise', 3, 15, '12–15', 75, 'Side delts', 'raise',
+    ['Stand tall, bells at your sides, a soft bend in the elbows.', 'Raise the arms out to just below shoulder height, leading with the elbows, then lower slowly.', 'Breathe out as you lift and in as you lower. Keep the body still.'],
+    ['Think about lifting the elbows, not the hands.', 'Stop just before the traps shrug.', 'A little bend in the elbow stays fixed.'],
+    ['Swinging from the hips.', 'Shrugging the shoulders to the ears.', 'Going so heavy the arms bend and it becomes a press.'],
+    'Cable lateral raise, one arm at a time.', 'Hold the top for a second, or add a fourth set.', ['Cable Lateral Raise']),
+  pushdown: EX('Cable Triceps Pushdown', 3, 12, '10–12', 75, 'Triceps', 'pushdown',
+    ['Stand at a high cable with a rope or bar. Elbows pinned to the ribs, shoulders down.', 'Straighten the elbows until the arms are locked, then let the handle come back until the forearms are just past parallel.', 'Breathe out as you push down and in as it returns.'],
+    ['Only the elbow moves.', 'Squeeze at the bottom without the shoulders rolling forward.', 'Body stays upright.'],
+    ['Letting the elbows drift forward.', 'Leaning over the cable to use bodyweight.', 'Stopping short of straight arms.'],
+    'A band pushdown, or a lighter pin.', 'A rope, spreading the ends at the bottom, or a slower return.', ['Cable Rope Tricep Extension', 'Barbell Skullcrusher']),
+  oht: EX('Overhead Triceps Extension', 3, 12, '10–12', 75, 'Triceps', 'oht',
+    ['Sit or stand and hold one dumbbell overhead in both hands, elbows pointing forward.', 'Bend the elbows and lower the bell behind the head, then straighten the arms.', 'Breathe in on the way down and out as you straighten.'],
+    ['Elbows stay narrow. Don’t let them flare wide.', 'Ribs stay down so the lower back doesn’t arch.', 'Full stretch at the bottom, full lockout at the top.'],
+    ['Flaring the elbows and turning it into a shoulder move.', 'Arching to heave the weight up.', 'Dropping the bell onto the neck.'],
+    'A cable overhead extension, or a lighter bell.', 'One arm at a time, or a pause in the stretch.'),
+  dead: EX('Barbell Deadlift', 3, 5, '5', 180, 'Back, glutes, hamstrings', 'dead',
+    ['Feet under the hips, bar over the mid-foot. Hinge down, grip just outside the legs, chest up, back flat.', 'Push the floor away and stand tall. The bar stays against the legs. Lower it by pushing the hips back.', 'Big breath and a brace before you pull. Breathe out as you stand, then reset the brace for the next rep.'],
+    ['Bar stays close the whole way.', 'Hips and shoulders rise together.', 'Lock out by squeezing the glutes, not by leaning back.'],
+    ['Rounding the lower back.', 'Jerking the bar off the floor.', 'Bouncing the plates between reps.'],
+    'Trap-bar deadlift, or a rack pull from the knee.', 'A pause just off the floor, or a heavier set of 3.'),
+  pulldown: EX('Lat Pulldown', 3, 10, '8–10', 120, 'Lats, biceps', 'pull',
+    ['Sit with the thighs anchored. Take a grip a little wider than the shoulders and start with the arms straight.', 'Pull the bar to the upper chest, driving the elbows down and in, then let it rise until the arms are straight.', 'Breathe out as you pull and in as the bar goes up.'],
+    ['Chest stays tall. Don’t lean back to swing.', 'Think elbows to the hips, not hands to the chest.', 'A slight pause when the bar meets the chest.'],
+    ['Yanking with the lower back.', 'Pulling the bar behind the head.', 'Half reps that never straighten the arms.'],
+    'A band pulldown, or an assisted pull-up.', 'Pull-ups, or a slower return.', ['Wide Grip Lat Pulldown']),
+  row: EX('Seated Cable Row', 3, 10, '8–10', 120, 'Mid back, lats, biceps', 'row',
+    ['Sit tall, knees soft, arms straight in front of you. Shoulders down before you pull.', 'Pull the handle to the lower ribs, squeeze the shoulder blades, then reach forward again.', 'Breathe out as you pull and in as you reach.'],
+    ['Torso stays still. The arms do the work.', 'Don’t shrug as the handle comes in.', 'Full reach at the front of every rep.'],
+    ['Rocking back and forth to use momentum.', 'Pulling so high it becomes a shrug.', 'Cutting the reach short.'],
+    'A chest-supported machine row.', 'Pause the squeeze for a second, or a slower reach.', ['Cable Seated Row', 'T-Bar Row']),
+  face: EX('Face Pull', 3, 15, '12–15', 75, 'Rear delts, upper back', 'face',
+    ['Set a rope at face height. Take an end in each hand and step back until the arms are straight.', 'Pull the rope toward the face, hands finishing beside the ears, then return slowly.', 'Breathe out as you pull. Keep the ribs down.'],
+    ['Elbows stay high, about in line with the shoulders.', 'Finish by rotating the hands back, so the rear delts join in.', 'Light enough that the shoulders don’t shrug.'],
+    ['Using so much weight the lower back leans.', 'Dropping the elbows and turning it into a row.', 'Rushing the return.'],
+    'Band face pull.', 'A slower three-second return.', ['Machine Seated Single Arm Reverse Fly']),
+  curl: EX('Dumbbell Curl', 3, 12, '8–12', 75, 'Biceps', 'curl',
+    ['Stand tall, bells at your sides, palms forward, elbows under the shoulders.', 'Curl until the biceps are fully shortened, then lower until the arms are straight.', 'Breathe out as you curl and in as you lower. Keep the body still.'],
+    ['Elbows stay pinned. They can drift a little forward at the top, not back.', 'Full stretch at the bottom.', 'Squeeze without swinging.'],
+    ['Rocking the hips to throw the weight up.', 'Elbows travelling forward into a front raise.', 'Dropping the bells at the bottom.'],
+    'Cable curl, or seated so you can’t swing.', 'Alternate arms, or a slower lowering.', ['Machine Preacher Curl']),
+  hammer: EX('Hammer Curl', 2, 12, '10–12', 75, 'Biceps, brachialis', 'hammer',
+    ['Same stance as a curl, but the palms face each other.', 'Curl without twisting the wrists, then lower to straight arms.', 'Breathe out on the way up and in on the way down.'],
+    ['Thumbs stay up the whole rep.', 'Elbows stay close to the ribs.', 'Control the bottom.'],
+    ['Swinging.', 'Turning the palms up halfway through.', 'Cutting the range short.'],
+    'A lighter pair, or one arm at a time.', 'Pause at the top, or add a third set.'),
+  squat: EX('Barbell Back Squat', 4, 8, '6–8', 180, 'Quads, glutes', 'squat',
+    ['Bar on the upper back, feet about shoulder width, toes slightly out. Big breath, brace, then sit down between the hips.', 'Go to at least parallel, knees tracking over the toes, then stand by driving the floor away.', 'Hold the brace on the way down. Breathe out as you pass the hard part on the way up, then brace again.'],
+    ['Chest stays up and the heels stay down.', 'Knees follow the toes. They can travel forward.', 'Own the bottom. Don’t collapse into it.'],
+    ['Knees caving in.', 'Heels lifting.', 'Good-morning the bar up, hips shooting back while the chest drops.'],
+    'Goblet squat, or a leg press.', 'Pause for a second in the hole, or add a fifth set.'),
+  rdl: EX('Romanian Deadlift', 3, 10, '8–10', 150, 'Hamstrings, glutes', 'rdl',
+    ['Hold the bar at the hips, feet under the hips, knees softly bent.', 'Push the hips back and slide the bar down the thighs until the hamstrings are loaded, then stand by driving the hips forward.', 'Breathe in as you hinge and out as you stand.'],
+    ['Bar stays against the legs.', 'Back stays flat. The movement is the hips, not a squat.', 'Stop when the hips can’t go back any further without the back rounding.'],
+    ['Turning it into a squat by bending the knees too much.', 'Rounding the back to touch the floor.', 'Bouncing out of the bottom.'],
+    'Dumbbell Romanian deadlift.', 'A slower lowering, or a pause just below the knee.', ['Barbell Straight Leg Deadlift']),
+  press: EX('Leg Press', 3, 12, '10–12', 120, 'Quads, glutes', 'legpress',
+    ['Sit in the machine with the feet about shoulder width on the platform, slightly turned out. Lower until the knees are around 90 degrees.', 'Press until the legs are straight without locking hard, then lower again.', 'Breathe in as the sled comes down and out as you press.'],
+    ['Lower back stays against the pad.', 'Knees track over the toes.', 'Don’t bounce the stoppers at the bottom.'],
+    ['Letting the hips tuck under and the lower back peel off the pad.', 'Locking the knees with a snap.', 'A range so short the quads never work.'],
+    'A narrower, lighter setting, or a goblet squat.', 'Feet lower on the platform to bias the quads, or a pause at the bottom.', ['Angled Machine Leg Press']),
+  curlleg: EX('Seated Leg Curl', 3, 12, '10–12', 75, 'Hamstrings', 'legcurl',
+    ['Sit with the pad on the back of the ankles and the thighs supported. Start with the legs nearly straight.', 'Curl the heels under the seat, squeeze, then let the weight return until the knees are almost straight.', 'Breathe out as you curl and in as the legs straighten.'],
+    ['Hips stay down. Don’t lift them to cheat the pad.', 'Squeeze at the shortest point.', 'Full stretch at the start of each rep.'],
+    ['Using momentum and swinging the stack.', 'Cutting the stretch short.', 'Letting the hips rise off the seat.'],
+    'A lighter pin, or a lying leg curl.', 'A two-second squeeze at the bottom.', ['Machine Seated Leg Curl']),
+  calf: EX('Standing Calf Raise', 4, 12, '10–15', 60, 'Calves', 'calf',
+    ['Stand on the edge of a step or in the machine, balls of the feet on the platform, heels free.', 'Drop the heels until you feel a stretch, then rise as high as you can and pause.', 'Breathe out as you rise. Move slowly enough that you can’t bounce.'],
+    ['The pause at the top is the work.', 'Knees stay almost straight.', 'Full stretch at the bottom of every rep.'],
+    ['Bouncing.', 'Bending the knees and using the quads.', 'A tiny range of motion.'],
+    'Seated calf raise, or two feet if one is too hard.', 'One leg at a time, or a slower lower.', ['Machine Standing Calf Raise']),
+  crunch: EX('Cable Crunch', 3, 12, '10–15', 60, 'Abs', 'crunch',
+    ['Kneel at a high cable, rope beside the ears, hips fixed.', 'Curl the ribs toward the hips, then return until the torso is tall again. The hips don’t sit back.', 'Breathe out hard as you crunch and in as you rise.'],
+    ['The movement is a curl of the spine, not a hip hinge.', 'Keep the rope beside the head so the neck stays quiet.', 'Pause for a moment in the curl.'],
+    ['Sitting back onto the heels and turning it into a squat.', 'Yanking with the arms.', 'Rushing so the abs never hold the weight.'],
+    'A bodyweight crunch, or a dead bug.', 'Hold the curl for two seconds, or add a fourth set.'),
+};
+const WARM = {
+  push: ['3 minutes easy on a bike, or a brisk walk.', 'Arm circles, 10 each way, then 10 band pull-aparts or wall slides if you have a band.', 'Two easy sets of the bench press with an empty bar, 8 reps. Stop well short of hard.'],
+  pull: ['3 minutes easy on a bike, or a brisk walk.', 'Arm swings, then 15 band pull-aparts or light face pulls.', 'Two easy sets of the deadlift with an empty bar, 5 reps. Brace, and don’t chase speed.'],
+  legs: ['3 minutes easy on a bike, or a brisk walk.', '10 bodyweight squats, then 10 hip hinges with your hands on your hips.', 'Two easy sets of the squat with an empty bar, 8 reps. Smooth, full range.'],
+};
+const DOWN = {
+  push: [['Chest', 'Doorway chest stretch, 30 seconds each side. Elbow at shoulder height, step through gently.'], ['Triceps', 'Overhead triceps stretch, 30 seconds each arm. Elbow points up, ribs stay down.'], ['Shoulder', 'Cross-body shoulder stretch, 30 seconds each arm. Pull the arm across the chest, shoulder down.']],
+  pull: [['Lats', 'Hang from a bar, or hold a doorway overhead, 30 seconds. Let the shoulders rise and the ribs drop.'], ['Chest and back', 'Clasp the hands behind you and open the chest, 30 seconds. Then round the upper back and reach forward, 30 seconds.'], ['Biceps', 'Arm straight, palm on a wall, thumb down, turn the body away, 30 seconds each side.']],
+  legs: [['Quads', 'Standing quad stretch, 30 seconds each side. Knees together, hips pushed slightly forward.'], ['Hamstrings', 'Hinge and reach toward the toes with a flat back, 30 seconds. Soft knees are fine.'], ['Calves', 'Hands on a wall, one heel down, knee straight, 30 seconds each side. Then a second 30 with the knee softly bent.']],
+};
+const TX = key => { const x = LIB[key]; return { id: uid(), key, name: x.name, sets: x.sets, reps: x.reps, rest: x.rest, note: '' }; };
 const SEED_TEMPLATES = () => ({
-  push: [TX('Smith Machine Incline Bench Press', 2, 8, 180), TX('Machine Seated Chest Fly', 2, 8, 180), TX('Dip', 2, 8, 180), TX('Cable Lateral Raise', 3, 8, 180), TX('Machine Preacher Curl', 3, 8, 180)],
-  pull: [TX('Wide Grip Lat Pulldown', 2, 8, 180), TX('T-Bar Row', 2, 8, 180), TX('Cable Seated Row', 2, 8, 180), TX('Cable Rope Tricep Extension', 2, 8, 180), TX('Barbell Skullcrusher', 2, 8, 90), TX('Machine Seated Single Arm Reverse Fly', 2, 8, 90, 'Done one arm at a time, facing each side, for more range of motion')],
-  legs: [TX('Angled Machine Leg Press', 2, 8, 180), TX('Barbell Straight Leg Deadlift', 2, 8, 180), TX('Machine Seated Leg Extension', 2, 8, 180), TX('Machine Seated Leg Curl', 2, 8, 180), TX('Machine Seated Hip Adduction', 2, 8, 180), TX('Machine Standing Calf Raise', 2, 8, 180)],
+  push: ['bench', 'ohp', 'incline', 'raise', 'pushdown', 'oht'].map(TX),
+  pull: ['dead', 'pulldown', 'row', 'face', 'curl', 'hammer'].map(TX),
+  legs: ['squat', 'rdl', 'press', 'curlleg', 'calf', 'crunch'].map(TX),
 });
+const LEGACY_NAMES = ['smith machine incline bench press', 'machine seated chest fly', 'dip', 'cable lateral raise', 'machine preacher curl', 'wide grip lat pulldown', 't bar row', 'cable seated row', 'cable rope tricep extension', 'barbell skullcrusher', 'machine seated single arm reverse fly', 'angled machine leg press', 'barbell straight leg deadlift', 'machine seated leg extension', 'machine seated leg curl', 'machine seated hip adduction', 'machine standing calf raise'];
 function blank() {
   return {
     version: 2,
@@ -131,6 +242,14 @@ function load() {
     };
     patchMeals(out.plan);
     Object.keys(out.days).forEach(k => patchMeals(out.days[k] && out.days[k].meals));
+    const legacy = ['push', 'pull', 'legs'].every(d => {
+      const list = out.gym.templates[d] || [];
+      return list.length && list.every(t => LEGACY_NAMES.includes(String(t.name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()));
+    });
+    if (legacy) out.gym.templates = SEED_TEMPLATES();
+    Object.keys(out.workouts).forEach(k => { const w = out.workouts[k]; if (w && w.tick) delete w.tick; });
+    const tw = out.workouts[today()];
+    if (tw && !tw.start && !(tw.exercises || []).some(e => (e.sets || []).some(s => s.done || num(s.weight) > 0))) delete out.workouts[today()];
     return out;
   } catch (e) { console.warn('PEAK: could not read saved data', e); return blank(); }
 }
@@ -181,14 +300,11 @@ const gymMin = () => { const [h, m] = String(S.gym.time || '18:00').split(':').m
 const restLabel = sec => sec >= 60 ? (sec % 60 ? fmt(sec / 60, 1) : sec / 60) + ' min rest' : sec + 's rest';
 function tplFor(name) { const k = exKey(name); for (const d of ['push', 'pull', 'legs']) { const t = (S.gym.templates[d] || []).find(x => exKey(x.name) === k); if (t) return t; } return null; }
 function fromTemplate(day) {
-  return (S.gym.templates[day] || []).map(t => ({ id: uid(), name: t.name, rest: num(t.rest) || 180, note: t.note || '',
-    sets: Array.from({ length: Math.max(1, Math.min(10, num(t.sets) || 1)) }, () => ({ id: uid(), reps: num(t.reps) || '', weight: '', done: false })) }));
+  return (S.gym.templates[day] || []).map(t => ({ id: uid(), key: t.key || '', name: t.name, rest: num(t.rest) || 180, note: t.note || '',
+    sets: Array.from({ length: Math.max(1, Math.min(10, num(t.sets) || 1)) }, () => ({ id: uid(), reps: '', weight: '', done: false, target: num(t.reps) || '' })) }));
 }
 /* Today's workout is preloaded from the cycle's template */
-function seedToday() {
-  const d = today(), day = cycleDay(d);
-  if (day !== 'rest' && !S.workouts[d]) { S.workouts[d] = { day, exercises: fromTemplate(day) }; save(); }
-}
+function seedToday() { /* A session starts when Start is tapped, not when the tab opens. */ }
 function realign(day) {
   const d = today(); S.gym.anchor = { date: d, idx: CYCLE.indexOf(day) };
   const w = S.workouts[d];
@@ -204,10 +320,25 @@ function allExerciseNames() {
   Object.keys(S.workouts).sort().forEach(d => S.workouts[d].exercises.forEach(e => map.set(exKey(e.name), e.name)));
   return Array.from(map.values());
 }
-function lastTime(name, beforeDate) {
+function nameKeys(name) {
+  const k = exKey(name), keys = new Set([k]);
+  Object.values(LIB).forEach(x => {
+    const all = [x.name, ...(x.alias || [])].map(exKey);
+    if (all.includes(k)) all.forEach(a => keys.add(a));
+  });
+  return keys;
+}
+function libFor(name) {
   const k = exKey(name);
+  return Object.values(LIB).find(x => exKey(x.name) === k || (x.alias || []).some(a => exKey(a) === k)) || null;
+}
+function lastTime(name, beforeDate) {
+  const keys = nameKeys(name);
   const dates = Object.keys(S.workouts).filter(d => d < beforeDate).sort().reverse();
-  for (const d of dates) { const e = S.workouts[d].exercises.find(x => exKey(x.name) === k && loggedEx(x)); if (e) return { date: d, sets: e.sets.filter(loggedSet) }; }
+  for (const d of dates) {
+    const e = (S.workouts[d].exercises || []).find(x => keys.has(exKey(x.name)) && loggedEx(x) && x.kind !== 'warmup' && x.kind !== 'down');
+    if (e) return { date: d, sets: e.sets.filter(loggedSet) };
+  }
   return null;
 }
 const topSet = sets => sets.reduce((best, s) => (!best || num(s.weight) > num(best.weight) || (num(s.weight) === num(best.weight) && num(s.reps) > num(best.reps))) ? s : best, null);
@@ -224,6 +355,7 @@ function liftSeries() {
   const map = new Map();
   Object.keys(S.workouts).sort().forEach(d => S.workouts[d].exercises.forEach(e => {
     if (!loggedEx(e)) return; const t = topSet(e.sets.filter(loggedSet)); const k = exKey(e.name);
+    if (e.kind === 'warmup' || e.kind === 'down') return;
     if (!map.has(k)) map.set(k, { name: e.name, points: [] });
     const s = map.get(k); s.name = e.name; s.points.push({ date: d, value: num(t.weight), reps: num(t.reps) });
   }));
@@ -539,108 +671,226 @@ function refreshShopCounts() {
 /* ================= Gym view ================= */
 const clock = ms => { const t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = t % 60; return h ? h + ':' + pad(m) + ':' + pad(sec) : m + ':' + pad(sec); };
 const hhmm = ms => { const d = new Date(ms + CLOCK); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
-function sessionCard(date, w, day) {
-  const isToday = date === today(), running = !!(w.start && !w.end), done = !!w.end, next = CYCLE[mod(CYCLE.indexOf(day) + 1, 4)];
-  const kicker = day === 'rest' ? 'Rest day' : `${DAYNAME[day]} day${isToday ? ' · Gym ' + esc(S.gym.time) : ''}`;
-  const big = running ? `<span class="timer" data-timer="session" data-date="${date}">${clock(Date.now() - w.start)}</span>`
-    : done ? `${clock(w.dur || 0)}<small>workout</small>` : `${DAYNAME[day]}`;
-  const sub = running ? `Started ${hhmm(w.start)}` : done ? `Finished ${hhmm(w.end)}, saved with this workout`
-    : isToday ? `Next up: ${DAYNAME[next]} tomorrow` : longDate(date);
-  const btn = !isToday ? '' : running ? `<button class="pill pill-sm" data-act="session-finish">Finish</button>`
-    : (!done && (day !== 'rest' || w.exercises.length)) ? `<button class="pill pill-sm pill-gold" data-act="session-start">Start workout</button>` : '';
-  const tplK = day === 'rest' ? 'push' : day;
-  const settings = isToday ? `<div class="label">Today is</div>
-      <div class="cyc">${CYCLE.map(k => `<button class="chip${k === day ? ' on' : ''}" data-act="cycle" data-day="${k}">${DAYNAME[k]}</button>`).join('')}</div>
-      <p class="mnote" style="margin:8px 2px 14px">Set it once. It then moves on by itself each day: Push, Pull, Legs, Rest, repeat.</p>
-      <div class="row" style="justify-content:space-between"><label class="label" style="margin:0" for="gymTime">Gym time</label><input class="field time-field" id="gymTime" type="time" data-gs="time" value="${esc(S.gym.time)}"></div>` : '';
-  return `<div class="card session${running ? ' running' : ''}${isOpen('card-session')}" data-card="card-session">
-    <div class="card-head" data-act="toggle"><div class="grow"><div class="card-kicker">${kicker}</div>
-      <div class="card-big">${big}</div><div class="item-sub" style="margin-top:2px">${sub}</div></div>
-      <div class="head-right">${btn}${I.chev}</div></div>
-    <div class="expand"><div class="expand-in"><div class="expand-body">${settings}
-      <div class="actions"><span class="faint" style="font-size:13px">Templates</span><div class="row">${['push', 'pull', 'legs'].map(k => `<button class="chip${k === tplK ? ' on' : ''}" data-act="tpl-edit" data-k="${k}">Edit ${DAYNAME[k]}</button>`).join('')}</div></div>
-    </div></div></div></div>`;
+function sessionMs(w) {
+  if (!w || !w.start) return 0;
+  return (w.active || 0) + (w.tick ? Math.max(0, Date.now() - w.tick) : 0);
 }
-function templateEditor(k) {
-  const list = S.gym.templates[k] || [];
-  const rests = [60, 90, 120, 150, 180, 240];
-  return `<div class="section-h" style="margin-top:6px"><h3>${DAYNAME[k]} template</h3><span>${list.length} exercise${list.length === 1 ? '' : 's'}</span></div>
-    <div class="list tpl" id="tplList">${list.map(t => `<div class="tpl-row" data-tpl="${t.id}">
-      <div class="row"><input class="field" data-tf="name" value="${esc(t.name)}" placeholder="Exercise name"><button class="del" data-act="tpl-del" aria-label="Remove ${esc(t.name)}">${I.x}</button></div>
-      <div class="tpl-nums"><label><span>Sets</span><input class="field" data-tf="sets" inputmode="numeric" value="${num(t.sets) || ''}"></label>
-        <label><span>Reps</span><input class="field" data-tf="reps" inputmode="numeric" value="${num(t.reps) || ''}"></label>
-        <label><span>Rest</span><select class="field" data-tf="rest">${rests.concat(rests.includes(num(t.rest)) ? [] : [num(t.rest)]).map(r => `<option value="${r}"${r === num(t.rest) ? ' selected' : ''}>${r >= 60 ? fmt(r / 60, 1) + ' min' : r + 's'}</option>`).join('')}</select></label></div>
-      </div>`).join('') || '<div class="empty">No exercises yet</div>'}</div>
-    <div class="foot"><button class="pill" data-act="tpl-add">${I.plus}Add exercise</button><button class="pill pill-gold" data-act="tpl-done">Done</button></div>
-    <p class="foot-note">Changes apply from the next ${DAYNAME[k]} day, or today if you haven’t started logging.</p>`;
+function parkGym() {
+  const w = S.workouts[today()];
+  if (!w || !w.start || w.end || !w.tick) return;
+  w.active = (w.active || 0) + Math.max(0, Date.now() - w.tick);
+  delete w.tick; save();
+}
+function wakeGym() {
+  const w = S.workouts[today()];
+  if (!w || !w.start || w.end || !w.guide || w.guide.phase === 'done') return;
+  if (!w.tick) { w.tick = Date.now(); save(); }
+}
+function dayMinutes(day) {
+  const xs = S.gym.templates[day] || [];
+  const rest = xs.reduce((a, x) => a + num(x.sets) * (num(x.rest) || 90), 0);
+  const work = xs.reduce((a, x) => a + num(x.sets) * 45, 0);
+  return Math.round((rest + work) / 60) + 13;
+}
+function coachOf(ex) {
+  if (!ex) return null;
+  if (ex.key && LIB[ex.key]) return LIB[ex.key];
+  return libFor(ex.name);
+}
+function lastLine(name, date) {
+  const lt = lastTime(name, date); if (!lt) return 'Last time: none yet';
+  const t = topSet(lt.sets);
+  return t && num(t.weight) ? `Last time: ${fmt(num(t.weight))} kg × ${num(t.reps)}` : `Last time: ${setsSummary(lt.sets)}`;
+}
+function poseSVG(id) {
+  const L = (x1, y1, x2, y2, w) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="${w || 7}" stroke-linecap="round"/>`;
+  const D = (x, y, r) => `<circle class="accent" cx="${x}" cy="${y}" r="${r || 9}"/>`;
+  const B = (x1, y1, x2, y2) => `<line class="accent" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="5" stroke-linecap="round"/>`;
+  const ground = `<path d="M16 134 H184" stroke="currentColor" stroke-opacity=".18" stroke-width="2"/>`;
+  const P = {
+    bench: ground + L(40, 88, 112, 88) + L(112, 88, 142, 74) + D(150, 70) + L(78, 88, 78, 56) + B(56, 52, 104, 52) + L(40, 88, 24, 112) + L(40, 88, 34, 120),
+    ohp: ground + L(100, 96, 100, 52) + D(100, 40) + L(100, 70, 70, 96) + L(100, 70, 130, 96) + B(62, 28, 138, 28) + L(100, 96, 78, 128) + L(100, 96, 122, 128),
+    incline: ground + L(48, 108, 118, 78) + L(118, 78, 146, 66) + D(154, 60) + L(86, 92, 70, 64) + B(58, 58, 108, 70) + L(48, 108, 36, 128),
+    raise: ground + L(100, 92, 100, 48) + D(100, 36) + L(100, 62, 48, 48) + L(100, 62, 152, 48) + D(48, 48, 5) + D(152, 48, 5) + L(100, 92, 80, 128) + L(100, 92, 120, 128),
+    pushdown: ground + L(96, 96, 96, 46) + D(96, 34) + L(96, 58, 78, 92) + L(70, 58, 78, 92) + B(64, 52, 92, 52) + L(96, 96, 78, 128) + L(96, 96, 116, 128),
+    oht: ground + L(100, 98, 100, 50) + D(100, 38) + L(100, 52, 100, 28) + D(100, 24, 6) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
+    dead: ground + L(108, 96, 108, 58) + D(108, 46) + L(108, 70, 86, 96) + B(78, 100, 132, 100) + L(108, 96, 86, 128) + L(108, 96, 128, 128),
+    pull: ground + B(70, 22, 140, 22) + L(104, 22, 104, 70) + D(104, 82) + L(104, 96, 104, 128) + L(104, 40, 86, 62) + L(104, 40, 122, 62),
+    row: ground + L(46, 96, 130, 96) + D(142, 90) + L(80, 96, 80, 70) + B(70, 66, 118, 66) + L(46, 96, 36, 120),
+    face: ground + L(100, 96, 100, 50) + D(100, 38) + L(100, 58, 62, 46) + L(100, 58, 138, 46) + B(150, 40, 168, 52) + L(100, 96, 82, 128) + L(100, 96, 118, 128),
+    curl: ground + L(100, 98, 100, 48) + D(100, 36) + L(100, 64, 78, 86) + D(74, 90, 5) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
+    hammer: ground + L(100, 98, 100, 48) + D(100, 36) + L(100, 64, 72, 88) + D(68, 92, 5) + L(100, 64, 128, 88) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
+    squat: ground + L(100, 108, 100, 62) + D(100, 50) + L(100, 78, 72, 108) + L(100, 78, 128, 108) + B(64, 40, 136, 40) + L(72, 108, 64, 128) + L(128, 108, 136, 128),
+    rdl: ground + L(108, 70, 70, 108) + D(118, 60) + L(78, 100, 96, 78) + B(60, 112, 108, 112) + L(70, 108, 58, 128),
+    legpress: ground + L(46, 110, 120, 70) + D(132, 60) + L(80, 96, 112, 78) + B(118, 70, 150, 96) + L(46, 110, 36, 128),
+    legcurl: ground + L(40, 96, 120, 96) + D(132, 90) + L(100, 96, 100, 70) + B(92, 66, 124, 66),
+    calf: ground + L(100, 120, 100, 52) + D(100, 40) + L(100, 120, 78, 132) + L(118, 120, 136, 132) + B(70, 132, 150, 132),
+    crunch: ground + L(70, 108, 120, 78) + D(132, 68) + L(90, 96, 70, 80) + B(58, 70, 86, 58),
+    stand: ground + L(100, 98, 100, 48) + D(100, 36) + L(100, 64, 74, 86) + L(100, 64, 126, 86) + L(100, 98, 80, 128) + L(100, 98, 120, 128),
+  };
+  return `<svg class="pose" viewBox="0 0 200 150" aria-hidden="true">${P[id] || P.stand}</svg>`;
+}
+function guideOrder(w) {
+  return [{ phase: 'warmup', i: 0 }].concat((w.exercises || []).map((_, i) => ({ phase: 'work', i }))).concat([{ phase: 'down', i: 0 }]);
+}
+function guideAt(w) {
+  const order = guideOrder(w), g = w.guide || { phase: 'warmup', i: 0 };
+  let idx = order.findIndex(s => s.phase === g.phase && (g.phase !== 'work' || s.i === g.i));
+  if (idx < 0) idx = 0;
+  return { order, idx };
+}
+function startSession(day) {
+  unlockAudio();
+  const d = today(), cur = S.workouts[d];
+  if (cur && cur.start && !cur.end && cur.guide && cur.guide.phase !== 'done') {
+    if (cur.day !== day) toast(`Finish ${DAYNAME[cur.day]} first`);
+    cur.tick = Date.now(); save(); U.gymDate = d; render(); window.scrollTo({ top: 0 }); return;
+  }
+  if (cur && cur.end) { cur.guide = { phase: 'done', i: 0 }; save(); U.gymDate = d; render(); return; }
+  S.workouts[d] = { day, exercises: fromTemplate(day), start: Date.now(), tick: Date.now(), active: 0, guide: { phase: 'warmup', i: 0 } };
+  S.gym.anchor = { date: d, idx: Math.max(0, CYCLE.indexOf(day)) };
+  save(); U.gymDate = d; render(); window.scrollTo({ top: 0 });
+}
+function shiftGuide(dir) {
+  const w = S.workouts[today()]; if (!w || !w.guide) return;
+  const { order, idx } = guideAt(w);
+  const next = order[Math.max(0, Math.min(order.length - 1, idx + dir))];
+  w.guide = { phase: next.phase, i: next.i };
+  if (!w.tick) w.tick = Date.now();
+  save(); render(); window.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
+}
+function finishSession() {
+  const w = S.workouts[today()]; if (!w) return;
+  w.dur = sessionMs(w); w.end = Date.now(); delete w.tick;
+  w.guide = { phase: 'done', i: 0 };
+  stopRest(); save(); render(); window.scrollTo({ top: 0 });
 }
 function renderGym() {
-  const date = U.gymDate, isToday = date === today();
-  if (isToday) seedToday();
-  const w = getWorkout(date), day = cycleDay(date);
-  const totalSets = w.exercises.reduce((a, e) => a + e.sets.length, 0);
-  const doneSets = w.exercises.reduce((a, e) => a + e.sets.filter(loggedSet).length, 0);
-  const vol = w.exercises.reduce((a, e) => a + volume(e.sets), 0);
-  const rows = w.exercises.map(e => exerciseRow(e, date)).join('');
-  const names = allExerciseNames();
-  const hist = Object.keys(S.workouts).filter(d => d !== date && loggedWorkout(S.workouts[d])).sort().reverse().slice(0, 12);
-  const histN = Object.keys(S.workouts).filter(d => loggedWorkout(S.workouts[d])).length;
-  const restState = day === 'rest' && !w.exercises.length;
-  const main = U.tplEdit ? templateEditor(U.tplEdit) : `
-    ${restState ? `<div class="panel rest-day">${I.moon}<div><b>Rest day</b><span>Recovery is where you grow. Eat the full plan, get your protein in and sleep well. ${DAYNAME.push} is up next.</span></div></div>`
-      : `<div class="panel stats"><div class="stat"><div class="stat-v">${w.exercises.length}</div><div class="stat-l">Exercises</div></div>
-      <div class="stat"><div class="stat-v">${doneSets}<span class="stat-of">/${totalSets}</span></div><div class="stat-l">Sets done</div></div>
-      <div class="stat"><div class="stat-v">${vol >= 10000 ? fmt(vol / 1000, 1) + 'k' : fmtInt(vol)}</div><div class="stat-l">Volume kg</div></div></div>
-    ${w.exercises.length ? `<div class="list" id="exList">${rows}</div>` : `<div class="list"><div class="empty"><b>No workout logged${isToday ? ' yet today' : ''}</b>Add an exercise below, or tap the mic and say “lat pulldown 2 sets of 8 at 60 kilos”.</div></div>`}`}
-    <form class="add-ex" data-form="add-ex" autocomplete="off">
-      <input class="field" name="ex" list="exNames" placeholder="${restState ? 'Training anyway? Add an exercise' : 'Add exercise'}" enterkeyhint="done">
-      <datalist id="exNames">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-      <button class="pill pill-gold" type="submit">${I.plus}Add</button>
-    </form>
-    ${hist.length ? `<div class="section-h"><h3>History</h3><span>${histN} workouts</span></div>
-      <div class="list">${hist.map(d => { const ws = S.workouts[d]; const n = ws.exercises.reduce((a, e) => a + e.sets.filter(loggedSet).length, 0); return `<div class="item"><div class="item-head" data-act="goto-gym" data-date="${d}">
-        <div class="item-main"><div class="item-title">${dayLabel(d)}${ws.day && ws.day !== 'rest' ? ` <span class="faint">· ${DAYNAME[ws.day]}</span>` : ''}</div><div class="item-sub">${esc(ws.exercises.filter(loggedEx).map(e => e.name).join(', '))}</div></div>
-        <div class="item-val">${n} sets${ws.dur ? ' · ' + Math.round(ws.dur / 60000) + ' min' : ''}</div>${I.chevR}</div></div>`; }).join('')}</div>` : ''}`;
-  $('#view-gym').innerHTML = `${dayswitch('gym', date, false)}
-    ${hintSlot('gym')}
-    ${sessionCard(date, w, day)}
-    ${main}`;
+  const date = U.gymDate;
+  if (date === today()) wakeGym();
+  const w = S.workouts[date];
+  const guiding = date === today() && w && w.guide && w.guide.phase && w.guide.phase !== 'done' && w.start && !w.end;
+  document.body.classList.toggle('guiding', !!guiding);
+  let body;
+  if (date !== today()) body = renderGymLog(date, w);
+  else if (w && w.guide && w.guide.phase === 'done') body = renderGymSummary(w);
+  else if (guiding) body = renderGymGuide(w);
+  else body = renderGymLand(w);
+  const hist = date === today() && !guiding && !(w && w.guide && w.guide.phase === 'done') ? renderGymHist(date) : '';
+  $('#view-gym').innerHTML = `${hintSlot('gym')}${body}${hist}`;
 }
-function exerciseRow(e, date) {
-  const lt = lastTime(e.name, date);
-  const t = topSet(e.sets);
-  const rest = num(e.rest) || 180;
-  return `<div class="item${isOpen(e.id)}" data-ex="${e.id}">
-    <div class="item-head" data-act="toggle"><span class="badge-n">${e.sets.filter(loggedSet).length}/${e.sets.length}</span>
-      <div class="item-main"><div class="item-title">${esc(e.name)}</div><div class="item-sub">${setsSummary(e.sets)} · ${restLabel(rest)}</div></div>
-      <div class="item-val">${t && num(t.weight) ? fmt(num(t.weight)) + ' kg' : ''}</div>${I.chev}</div>
-    <div class="expand"><div class="expand-in"><div class="expand-body">
-      ${lt ? `<div class="hint">${I.clock}<span>Last time (${shortDate(lt.date)}): ${setsSummary(lt.sets)}</span></div>` : ''}
-      ${e.note ? `<div class="hint">${I.info}<span>${esc(e.note)}</span></div>` : ''}
-      ${e.sets.length ? `<div class="set-head"><span>Done</span><span>Reps</span><span></span><span>Weight</span><span></span></div>` : ''}
-      <div class="sets">${e.sets.map((s, i) => `<div class="set${s.done ? ' is-done' : ''}" data-set="${s.id}"><button class="set-check${s.done ? ' on' : ''}" data-act="set-done" aria-label="Set ${i + 1} done"><span>${i + 1}</span>${I.check}</button>
-        <input class="field" data-sf="reps" inputmode="numeric" value="${num(s.reps) || ''}" placeholder="${lt && lt.sets[i] ? num(lt.sets[i].reps) : 'reps'}">
-        <span class="x">×</span>
-        <div class="unit-wrap"><input class="field" data-sf="weight" inputmode="decimal" value="${num(s.weight) || ''}" placeholder="${lt && lt.sets[i] ? fmt(num(lt.sets[i].weight)) : '0'}"><span>kg</span></div>
-        <button class="del" data-act="del-set" aria-label="Remove set">${I.x}</button></div>`).join('')}</div>
-      <div class="actions"><button class="pill pill-sm pill-danger" data-act="del-ex">Remove</button><button class="pill pill-sm" data-act="add-set">${I.plus}Add set</button></div>
-    </div></div></div></div>`;
+function renderGymLand(w) {
+  const live = w && w.start && !w.end && w.guide && w.guide.phase !== 'done';
+  const cards = ['push', 'pull', 'legs'].map(day => {
+    const meta = SPLIT[day], xs = S.gym.templates[day] || [];
+    const on = live && w.day === day;
+    const done = w && w.end && w.day === day;
+    const label = on ? 'RESUME' : done ? 'SEE SUMMARY' : 'START';
+    return `<article class="gym-card${on ? ' is-live' : ''}">
+      <div class="gym-kicker">${on ? 'In progress' : done ? 'Saved today' : 'Session'}</div>
+      <h2>${meta.title}</h2>
+      <p class="gym-muscles">${esc(meta.muscles)}</p>
+      <p class="gym-line">${esc(meta.line)}</p>
+      <div class="gym-meta"><span>${xs.length} exercises</span><span>About ${dayMinutes(day)} min</span></div>
+      <button class="pill pill-gold gym-start" data-act="gym-start" data-day="${day}">${label}</button>
+    </article>`;
+  }).join('');
+  const resume = live ? `<button class="gym-resume" data-act="gym-start" data-day="${w.day}">Resume ${DAYNAME[w.day]} · ${clock(sessionMs(w))}</button>` : '';
+  return `<div class="gym-land">${resume}${cards}</div>`;
+}
+function renderGymHist(date) {
+  const hist = Object.keys(S.workouts).filter(d => d !== date && loggedWorkout(S.workouts[d])).sort().reverse().slice(0, 8);
+  if (!hist.length) return '';
+  const n = Object.keys(S.workouts).filter(d => loggedWorkout(S.workouts[d])).length;
+  return `<div class="section-h"><h3>History</h3><span>${n} workouts</span></div>
+    <div class="list">${hist.map(d => { const ws = S.workouts[d]; const sets = ws.exercises.reduce((a, e) => a + e.sets.filter(loggedSet).length, 0); return `<div class="item"><div class="item-head" data-act="goto-gym" data-date="${d}">
+      <div class="item-main"><div class="item-title">${dayLabel(d)}${ws.day && DAYNAME[ws.day] ? ` <span class="faint">· ${DAYNAME[ws.day]}</span>` : ''}</div><div class="item-sub">${esc(ws.exercises.filter(loggedEx).map(e => e.name).join(', '))}</div></div>
+      <div class="item-val">${sets} sets${ws.dur ? ' · ' + Math.max(1, Math.round(ws.dur / 60000)) + ' min' : ''}</div>${I.chevR}</div></div>`; }).join('')}</div>`;
+}
+function renderGymLog(date, w) {
+  const rows = (w && w.exercises || []).map(e => `<div class="item"><div class="item-head"><div class="item-main"><div class="item-title">${esc(e.name)}</div><div class="item-sub">${esc(setsSummary(e.sets.filter(loggedSet)))}</div></div></div></div>`).join('');
+  return `<button class="pill pill-sm gym-back" data-act="gym-today">Today</button>
+    <h2 class="gym-screen-title">${esc(longDate(date))}</h2>
+    <p class="gym-screen-sub">${w && w.day && DAYNAME[w.day] ? DAYNAME[w.day] : 'Logged session'}${w && w.dur ? ' · ' + Math.max(1, Math.round(w.dur / 60000)) + ' min' : ''}</p>
+    ${rows ? `<div class="list">${rows}</div>` : '<div class="list"><div class="empty"><b>Nothing logged this day</b></div></div>'}`;
+}
+function blockList(title, items, cls) {
+  return `<section class="g-block"><h3>${title}</h3><ol class="${cls}">${items.map(t => `<li>${esc(t)}</li>`).join('')}</ol></section>`;
+}
+function renderGymGuide(w) {
+  const { order, idx } = guideAt(w);
+  const step = order[idx], pct = Math.round((idx / Math.max(1, order.length - 1)) * 100);
+  const bar = `<div class="g-top"><button class="pill pill-sm" data-act="gym-land">Close</button><div class="g-count">${idx + 1} of ${order.length}</div></div>
+    <div class="g-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>`;
+  const nav = `<div class="g-nav"><button class="pill" data-act="gym-prev"${idx === 0 ? ' disabled' : ''}>Previous</button><button class="pill pill-gold" data-act="gym-next">${step.phase === 'down' ? 'Finish' : 'Next'}</button></div>`;
+  if (step.phase === 'warmup') {
+    return `${bar}<p class="g-kicker">Warm up · ${DAYNAME[w.day]}</p><h2 class="gym-screen-title">Get ready</h2>
+      <p class="g-lead">About 8 minutes. The easy sets are practice, not working sets, so they are not logged.</p>
+      ${poseSVG('stand')}
+      <ol class="g-steps">${(WARM[w.day] || []).map(t => `<li>${esc(t)}</li>`).join('')}</ol>
+      <p class="g-credit">Form diagrams are drawn for PEAK and stored in the app.</p>${nav}`;
+  }
+  if (step.phase === 'down') {
+    return `${bar}<p class="g-kicker">Cool down · ${DAYNAME[w.day]}</p><h2 class="gym-screen-title">Stretch</h2>
+      <p class="g-lead">About 5 minutes. Easy range, no bouncing. Breathe out as you settle into each one.</p>
+      ${poseSVG('stand')}
+      <ol class="g-steps">${(DOWN[w.day] || []).map(([h, t]) => `<li><b>${esc(h)}.</b> ${esc(t)}</li>`).join('')}</ol>${nav}`;
+  }
+  const e = w.exercises[step.i], c = coachOf(e) || { name: e.name, muscles: 'Your lift', repText: (e.sets[0] && e.sets[0].target) || '', rest: e.rest, pose: 'stand', how: ['Set up so you can repeat the same position every rep.', 'Move through a range you can control.', 'Breathe out on the effort and in as the weight comes back.'], cues: ['Same setup every set.', 'Control the lowering.'], mistakes: ['Bouncing the weight.', 'Holding one breath for the whole set.'], easier: 'Use less weight.', harder: 'Slow the lowering to three seconds.' };
+  const pres = c.repText ? `${c.sets || e.sets.length} × ${c.repText}` : `${e.sets.length} sets`;
+  const sets = `<div class="sets guide-sets" data-ex="${e.id}">${e.sets.map((s, i) => `<div class="set${s.done ? ' is-done' : ''}" data-set="${s.id}"><button class="set-check${s.done ? ' on' : ''}" data-act="set-done" aria-label="Set ${i + 1} done"><span>${i + 1}</span>${I.check}</button>
+    <input class="field" data-sf="reps" inputmode="numeric" value="${num(s.reps) || ''}" placeholder="${s.target || 'reps'}" aria-label="Reps">
+    <span class="x">×</span>
+    <div class="unit-wrap"><input class="field" data-sf="weight" inputmode="decimal" value="${num(s.weight) || ''}" placeholder="0" aria-label="Weight"><span>kg</span></div></div>`).join('')}</div>`;
+  return `${bar}<p class="g-kicker">${DAYNAME[w.day]} · ${step.i + 1} of ${w.exercises.length}</p><h2 class="gym-screen-title">${esc(e.name)}</h2>
+    <p class="g-muscles">${esc(c.muscles)}</p>
+    <div class="g-pres"><b>${esc(pres)}</b><span>${esc(restLabel(num(e.rest) || c.rest || 90))}</span></div>
+    <p class="g-last">${esc(lastLine(e.name, today()))}</p>
+    ${poseSVG(c.pose)}
+    ${blockList('How to do it', c.how, 'g-steps')}
+    ${blockList('Form cues', c.cues, 'g-cues')}
+    ${blockList('Avoid', c.mistakes, 'g-bad')}
+    <section class="g-block g-swap"><h3>Easier / harder</h3><p><b>Easier.</b> ${esc(c.easier)}</p><p><b>Harder.</b> ${esc(c.harder)}</p></section>
+    <section class="g-block"><h3>Log the sets</h3><p class="g-lead">Tick a set and the rest timer starts. Weight and reps are saved for next time.</p>${sets}</section>
+    <p class="g-credit">Form diagrams are drawn for PEAK and stored in the app.</p>${nav}`;
+}
+function renderGymSummary(w) {
+  const sets = w.exercises.reduce((a, e) => a + e.sets.filter(loggedSet).length, 0);
+  const planned = w.exercises.reduce((a, e) => a + e.sets.length, 0);
+  const vol = w.exercises.reduce((a, e) => a + volume(e.sets.filter(loggedSet)), 0);
+  const mins = Math.max(1, Math.round((w.dur || sessionMs(w)) / 60000));
+  const rows = w.exercises.map(e => {
+    const done = e.sets.filter(loggedSet), t = topSet(done);
+    const bit = done.length ? (t && num(t.weight) ? `${fmt(num(t.weight))} kg × ${num(t.reps)}` : setsSummary(done)) : 'Skipped';
+    return `<div class="item"><div class="item-head"><div class="item-main"><div class="item-title">${esc(e.name)}</div><div class="item-sub">${done.length}/${e.sets.length} sets</div></div><div class="item-val">${esc(bit)}</div></div></div>`;
+  }).join('');
+  return `<p class="g-kicker">Finished · ${DAYNAME[w.day] || ''}</p><h2 class="gym-screen-title">Session saved</h2>
+    <div class="panel stats"><div class="stat"><div class="stat-v">${mins}</div><div class="stat-l">Minutes</div></div>
+      <div class="stat"><div class="stat-v">${sets}<span class="stat-of">/${planned}</span></div><div class="stat-l">Sets</div></div>
+      <div class="stat"><div class="stat-v">${vol >= 10000 ? fmt(vol / 1000, 1) + 'k' : fmtInt(vol)}</div><div class="stat-l">Volume kg</div></div></div>
+    <div class="list">${rows}</div>
+    <button class="pill pill-gold gym-start" data-act="gym-land">Back to gym</button>`;
 }
 function refreshExerciseHead(item, e) {
+  if (!e) return;
+  const badge = item && $('.badge-n', item);
+  if (badge) badge.textContent = e.sets.filter(loggedSet).length + '/' + e.sets.length;
+  const sub = item && $('.item-sub', item);
+  if (sub) sub.textContent = setsSummary(e.sets) + ' · ' + restLabel(num(e.rest) || 180);
+  const val = item && $('.item-val', item);
   const t = topSet(e.sets);
-  $('.badge-n', item).textContent = e.sets.filter(loggedSet).length + '/' + e.sets.length;
-  $('.item-sub', item).textContent = setsSummary(e.sets) + ' · ' + restLabel(num(e.rest) || 180);
-  $('.item-val', item).textContent = t && num(t.weight) ? fmt(num(t.weight)) + ' kg' : '';
-  const w = getWorkout(U.gymDate), stats = $$('#view-gym .stat-v');
-  const vol = w.exercises.reduce((a, x) => a + volume(x.sets), 0);
-  if (stats.length === 3) { stats[1].innerHTML = w.exercises.reduce((a, x) => a + x.sets.filter(loggedSet).length, 0) + '<span class="stat-of">/' + w.exercises.reduce((a, x) => a + x.sets.length, 0) + '</span>'; stats[2].textContent = vol >= 10000 ? fmt(vol / 1000, 1) + 'k' : fmtInt(vol); }
+  if (val) val.textContent = t && num(t.weight) ? fmt(num(t.weight)) + ' kg' : '';
 }
 function addExercise(date, name) {
   name = titleCase(name); if (!name) return null;
   const w = ensureWorkout(date);
-  const k = exKey(name);
-  let e = w.exercises.find(x => exKey(x.name) === k);
-  if (!e) { const known = allExerciseNames().find(n => exKey(n) === k), tp = tplFor(known || name); e = { id: uid(), name: known || name, rest: tp ? num(tp.rest) || 180 : 180, note: tp ? tp.note || '' : '', sets: [] }; w.exercises.push(e); }
+  const keys = nameKeys(name);
+  let e = w.exercises.find(x => keys.has(exKey(x.name)));
+  if (!e) {
+    const known = libFor(name), tp = tplFor(name);
+    e = { id: uid(), key: known ? (Object.keys(LIB).find(k => LIB[k] === known) || '') : '', name: known ? known.name : name, rest: tp ? num(tp.rest) || 180 : (known ? known.rest : 180), note: tp ? tp.note || '' : '', sets: [] };
+    w.exercises.push(e);
+  }
   U.lastExercise = e.name; return e;
 }
 
@@ -780,6 +1030,7 @@ function renderProgress() {
 }
 
 function render() {
+  if (U.tab !== 'gym') document.body.classList.remove('guiding');
   if (U.tab === 'meals') renderMeals(); else if (U.tab === 'gym') renderGym(); else renderProgress();
 }
 
@@ -800,7 +1051,7 @@ function commit(focusSel) { save(); render(); afterRender(focusSel); }
 
 views.addEventListener('click', e => {
   const a = e.target.closest('[data-act]'); if (!a) return;
-  const act = a.dataset.act, item = a.closest('.item,.card');
+  const act = a.dataset.act, item = a.closest('.item,.card,[data-ex]');
   const mealId = item && item.dataset.meal, exId = item && item.dataset.ex;
   switch (act) {
     case 'tick': {
@@ -855,7 +1106,7 @@ views.addEventListener('click', e => {
       if (s.done) {
         const i = ex.sets.indexOf(s), lt = lastTime(ex.name, U.gymDate), ref = lt && (lt.sets[i] || lt.sets[lt.sets.length - 1]), tp = tplFor(ex.name);
         if (!num(s.weight) && ref && num(ref.weight)) s.weight = num(ref.weight);
-        if (!num(s.reps)) s.reps = (ref && num(ref.reps)) || (tp && num(tp.reps)) || '';
+        if (!num(s.reps)) s.reps = (ref && num(ref.reps)) || s.target || (tp && num(tp.reps)) || '';
         if (U.gymDate === today() && !w.start) { w.start = Date.now(); delete w.end; delete w.dur; started = true; }
         const left = getWorkout(U.gymDate).exercises.some(x => x.sets.some(y => !y.done));
         if (left) startRest(num(ex.rest) || 180, ex.name); else stopRest();
@@ -867,6 +1118,20 @@ views.addEventListener('click', e => {
       $('[data-sf="reps"]', row).value = num(s.reps) || ''; $('[data-sf="weight"]', row).value = num(s.weight) || '';
       refreshExerciseHead(item, ex); break;
     }
+    case 'gym-start': startSession(a.dataset.day); break;
+    case 'gym-next': {
+      const gw = S.workouts[today()];
+      if (gw && gw.guide && gw.guide.phase === 'down') finishSession();
+      else shiftGuide(1); break;
+    }
+    case 'gym-prev': shiftGuide(-1); break;
+    case 'gym-finish': finishSession(); break;
+    case 'gym-land': {
+      const gw = S.workouts[today()];
+      if (gw && gw.guide && gw.guide.phase === 'done') gw.guide = null;
+      save(); render(); window.scrollTo({ top: 0 }); break;
+    }
+    case 'gym-today': U.gymDate = today(); render(); window.scrollTo({ top: 0 }); break;
     case 'session-start': {
       unlockAudio();
       const w = ensureWorkout(today()); w.start = Date.now(); delete w.end; delete w.dur; U.open.delete('card-session');
@@ -1009,7 +1274,7 @@ function computeHints(at) {
   const add = (id, text, tabs) => out.push({ id, text, tabs: tabs || ['meals', 'gym'] });
   if (t >= 300 && t < 690 && !S.bodyweight.some(b => b.date === d)) add('weigh', 'Weigh in now: after the toilet, before food', ['meals', 'progress']);
   if (live) add('live', 'Tick each set and your rest timer starts by itself', ['gym']);
-  if (train && !started && t >= G - 20 && t < G + 45) add('soon', t < G ? `Gym in ${G - t} min: ${DAYNAME[day]} day` : `Gym time: ${DAYNAME[day]} day. Tap Start workout when you begin`);
+  if (!started && t >= G - 20 && t < G + 45) add('soon', t < G ? `Gym in ${G - t} min. Open Gym and tap Start` : 'Gym time. Open Gym and tap Start');
   if (train && !started && open(m3) && t >= G - 75 && t < G + 15) add('carbs', 'Get your carbs in: bananas + dates, 30–60 mins before the gym');
   if (open(m1) && t >= 750 && t < (train ? G - 75 : 1080)) add('m1', train ? `No ${m1.name.toLowerCase()} yet. Get it in so you’re fuelled for ${S.gym.time}` : `${m1.name} still to go today`, ['meals']);
   if (open(m2) && t >= 900 && t < (train ? G - 75 : 1140)) add('m2', 'Snack time: Greek yogurt, berries, grapes and honey', ['meals']);
@@ -1042,7 +1307,11 @@ function dismissHint(id) { const st = hintState(); if (!st.off.includes(id)) st.
 const RKEY = 'peakfit.rest';
 let REST = (() => { try { const r = JSON.parse(localStorage.getItem(RKEY)); return r && r.end > Date.now() - 30000 ? r : null; } catch (_) { return null; } })();
 const restBar = $('#restBar');
-function startRest(sec, name) { REST = { end: Date.now() + sec * 1000, total: sec, name }; localStorage.setItem(RKEY, JSON.stringify(REST)); paintRest(); }
+function startRest(sec, name) {
+  REST = { end: Date.now() + sec * 1000, total: sec, name };
+  localStorage.setItem(RKEY, JSON.stringify(REST)); paintRest();
+  if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) {} }
+}
 function stopRest() { REST = null; localStorage.removeItem(RKEY); paintRest(); }
 function paintRest() {
   if (!restBar) return;
@@ -1414,11 +1683,13 @@ setTab(TABS.includes(U.tab) ? U.tab : 'meals', true);
 // Roll the day over if the app stays open past midnight
 let bootDay = today();
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) return;
+  if (document.hidden) { parkGym(); return; }
+  wakeGym();
   if (today() !== bootDay) { if (U.mealsDate === bootDay) U.mealsDate = today(); if (U.gymDate === bootDay) U.gymDate = today(); bootDay = today(); render(); }
   else refreshHint();
   tick();
 });
+window.addEventListener('pagehide', parkGym);
 paintRest();
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 
